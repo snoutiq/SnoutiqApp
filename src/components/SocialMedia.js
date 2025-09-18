@@ -482,3 +482,37 @@ const styles = StyleSheet.create({
 });
 
 export default SocialScreen;
+
+// import { analytics } from '@react-native-firebase/analytics';
+// import { Button, StyleSheet, View } from 'react-native';
+
+// const SocialMedia = () => {
+//   const PreDefined = async() => {
+//     console.log('PredDefined');
+//     await analytics(). logLogin({
+//       method:'facebook'
+//     })
+//   }
+
+//      const CustomButton = async() => {
+//       console.log('CustomButton');
+//     await analytics().logEvent({
+//       id:'asdnjajd_sdsad',
+//       item:'product 1',
+//       description:['sports', 'cricket'],
+//       size:'9'
+//     })
+//   }
+
+//   return (
+//     <View style={{backgroundColor:"white",flex:1,alignItems:"center",justifyContent:"center"}}>
+//       <Button title='PreDefined Button' onPress={PreDefined}/>
+
+//       <Button title='Custom Button' onPress={CustomButton}/>
+//     </View>
+//   )
+// }
+
+// export default SocialMedia
+
+// const styles = StyleSheet.create({})

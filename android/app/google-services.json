@@ -1,0 +1,55 @@
+{
+  "project_info": {
+    "project_number": "325007826401",
+    "firebase_url": "https://snoutiqapp-default-rtdb.firebaseio.com",
+    "project_id": "snoutiqapp",
+    "storage_bucket": "snoutiqapp.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:325007826401:android:0f9d3cf46b8c32f21786a0",
+        "android_client_info": {
+          "package_name": "com.snoutiq.snoutiq_expo_app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "325007826401-h5archgnqivlglaje3kc2ns6qn9havpc.apps.googleusercontent.com",
+          "client_type": 1,
+          "android_info": {
+            "package_name": "com.snoutiq.snoutiq_expo_app",
+            "certificate_hash": "5e8f16062ea3cd2c4a0d547876baa6f38cabf625"
+          }
+        },
+        {
+          "client_id": "325007826401-dhsrqhkpoeeei12gep3g1sneeg5880o7.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyDBTE0IA1xtFdtnMmM-EX-o0LWdNGV5F4g"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "325007826401-dhsrqhkpoeeei12gep3g1sneeg5880o7.apps.googleusercontent.com",
+              "client_type": 3
+            },
+            {
+              "client_id": "325007826401-a3l72e9mlcii4cf7l55vufht2qlc3t6a.apps.googleusercontent.com",
+              "client_type": 2,
+              "ios_info": {
+                "bundle_id": "com.snoutiq.snoutiq_expo_app"
+              }
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

@@ -127,7 +127,7 @@ const LoginScreen = () => {
         GoogleSignin.configure({
           webClientId:'325007826401-dhsrqhkpoeeei12gep3g1sneeg5880o7.apps.googleusercontent.com',
     iosClientId: "325007826401-a3l72e9mlcii4cf7l55vufht2qlc3t6a.apps.googleusercontent.com", 
-    offlineAccess: true, // if you need serverAuthCode
+    offlineAccess: true, 
     scopes: ["profile", "email"]
   });
   }, [])
@@ -503,12 +503,10 @@ const startSignInFlow = async () => {
 
 </View>
 
-
-          {/* Sign Up Link */}
           <TouchableOpacity style={styles.signUpContainer} onPress={handleSignUp}>
             <Text style={styles.signUpText}>
               Don't have an account?
-              <Text style={styles.signUpLink}> Sign Up</Text>
+              <Text style={styles.signUpLink}> Register</Text>
             </Text>
           </TouchableOpacity>
         </View>

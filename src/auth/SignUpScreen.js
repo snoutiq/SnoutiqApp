@@ -250,6 +250,7 @@ const SignUpScreen = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const [loading, setLoading] = useState(false);
   const [errors, setErrors] = useState({});
+  const [userId, setUserId] = useState(null); // New state for userId
   
   // Form data for pet owner signup
   const [formData, setFormData] = useState({
@@ -263,22 +264,24 @@ const SignUpScreen = () => {
     petAge: "",
     petBreed: "",
     petWeight: "",
-    google_token: ""
+    google_token: "",
+    email: ""
   });
   
   // Dog breeds state
   const [dogBreeds, setDogBreeds] = useState([]);
   const [loadingBreeds, setLoadingBreeds] = useState(false);
 
-  // Store email and google_token in AsyncStorage when Google account is selected
+  // Store email, google_token, and userId in AsyncStorage when Google account is selected
   useEffect(() => {
-    if (selectedGoogleAccount?.email && selectedGoogleAccount?.google_token) {
+    if (selectedGoogleAccount?.email && selectedGoogleAccount?.google_token && userId) {
       AsyncStorage.multiSet([
         ['userEmail', selectedGoogleAccount.email],
-        ['googleSub', selectedGoogleAccount.google_token]
-      ]).catch(err => console.error("Failed to save email or google_token:", err));
+        ['googleSub', selectedGoogleAccount.google_token],
+        ['userId', userId.toString()]
+      ]).catch(err => console.error("Failed to save email, google_token, or userId:", err));
     }
-  }, [selectedGoogleAccount]);
+  }, [selectedGoogleAccount, userId]);
 
   // Function to format breed name for display
   const formatBreedName = (breedKey, subBreed = null) => {
@@ -458,7 +461,7 @@ const SignUpScreen = () => {
         }
       } else if (currentStep === 2 && userType === 'pet_owner') {
         const success = await handlePetOwnerRegistration();
-        console.log(success)
+        console.log(success);
       }
     } catch (error) {
       console.error('Error in handleNext:', error);
@@ -489,6 +492,25 @@ const SignUpScreen = () => {
       console.log("Google user data:", googleData);
       console.log("Google unique ID (sub):", googleData.sub);
 
+      // Call initial-register API
+      const initialRegisterResponse = await axios.post(
+        "https://snoutiq.com/backend/api/auth/initial-register",
+        {
+          fullName: googleData.name,
+          email: googleData.email,
+          google_token: googleData.sub,
+        }
+      );
+
+      console.log("Initial register response:", initialRegisterResponse.data);
+
+      if (initialRegisterResponse.data.status === "error") {
+        Alert.alert("Error", initialRegisterResponse.data.message || "Initial registration failed. Please try again.");
+        return;
+      }
+
+      const userId = initialRegisterResponse.data.user_id;
+
       const account = {
         idToken,
         email: googleData.email || "",
@@ -501,24 +523,25 @@ const SignUpScreen = () => {
         ...prev,
         fullName: googleData.name || "",
         email: googleData.email || "",
-        mobileNumber: "",
         google_token: googleData.sub
       }));
 
       setSelectedGoogleAccount(account);
+      setUserId(userId); // Store userId
       
       // Save to AsyncStorage
       await AsyncStorage.multiSet([
         ['userEmail', googleData.email],
-        ['googleSub', googleData.sub]
+        ['googleSub', googleData.sub],
+        ['userId', userId.toString()]
       ]);
       
-      console.log("✅ Google sub saved to AsyncStorage:", googleData.sub);
+      console.log("✅ Google sub and userId saved to AsyncStorage:", googleData.sub, userId);
       Alert.alert("Success", "Google login successful. Continue with pet details!");
       setCurrentStep(2);
     } catch (error) {
-      console.error("Google login failed:", error);
-      Alert.alert("Error", "Google login failed. Please try again.");
+      console.error("Google login failed:", error.response?.data || error.message);
+      Alert.alert("Error", error.response?.data?.message || "Google login failed. Please try again.");
     } finally {
       setLoading(false);
     }
@@ -540,6 +563,12 @@ const SignUpScreen = () => {
       return false;
     }
 
+    if (!userId) {
+      console.error("No userId found");
+      Alert.alert("Error", "No user ID found from initial registration");
+      return false;
+    }
+
     // Get location permission and coordinates
     let location = null;
     try {
@@ -547,7 +576,7 @@ const SignUpScreen = () => {
       if (status !== 'granted') {
         Alert.alert(
           "Permission required",
-          "Location is needed to complete registration. Please enable it in your settings."
+          "Location is needed to complete registration. Please enable it in settings."
         );
         return false;
       }
@@ -563,6 +592,7 @@ const SignUpScreen = () => {
     } : { lat: null, lng: null };
 
     const payload = {
+      user_id: userId, // Include userId from initial-register
       fullName: formData.fullName,
       email: emailFromGoogle,
       google_token: tokenFromGoogle,
@@ -623,10 +653,12 @@ const SignUpScreen = () => {
                 petAge: "",
                 petBreed: "",
                 petWeight: "",
-                google_token: ""
+                google_token: "",
+                email: ""
               });
               
               setSelectedGoogleAccount(null);
+              setUserId(null);
               setCurrentStep(1);
               
               return true; // Success
@@ -854,7 +886,12 @@ const SignUpScreen = () => {
                 </View>
               </View>
               
-              <GoogleSigninButton onPress={startSignInFlow} label="Sign in with Google" />
+              <View style={{ justifyContent: 'center', alignItems: 'center' }}>
+                <GoogleSigninButton
+                  onPress={startSignInFlow}
+                  label="Register with Google"
+                />
+              </View>
             </>
           )}
 
@@ -937,7 +974,6 @@ const SignUpScreen = () => {
                 loading={formData.petType === "dog" && loadingBreeds}
               />
 
-              {/* New Weight Input Field */}
               <CustomInput
                 title="Pet Weight"
                 value={formData.petWeight}
