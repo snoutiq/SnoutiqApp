@@ -64,7 +64,10 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     try {
       // Remove data from AsyncStorage
-      await AsyncStorage.multiRemove(['userToken', 'userData', 'sessionToken']);
+     const profileKey = user?.id ? `profileCompleted:${user.id}` : null;
+		 const keys = ['userToken','userData','sessionToken','chatRoomToken'];
+		 if (profileKey) keys.push(profileKey);
+		 await AsyncStorage.multiRemove(keys);
 
       // Clear state
       setUser(null);
@@ -133,3 +136,5 @@ export const useAuth = () => {
   }
   return context;
 };
+
+

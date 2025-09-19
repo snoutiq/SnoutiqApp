@@ -1,3 +1,4 @@
+
 import axios from "axios";
 import { useNavigation } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -14,6 +15,7 @@ import {
   View
 } from 'react-native';
 
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {
   GoogleSignin,
   GoogleSigninButton
@@ -25,7 +27,6 @@ import {
   verticalScale
 } from 'react-native-size-matters';
 import { useAuth } from "../context/AuthContext";
-
 const { width, height } = Dimensions.get('window');
 
 const colors = {
@@ -113,7 +114,7 @@ const CustomButton = ({ title, onPress, loading = false, variant = 'primary' }) 
 
 const LoginScreen = () => {
   const navigation = useNavigation();
-  const { login } = useAuth();
+  const { login,updateUser } = useAuth();
   const [selectedTab, setSelectedTab] = useState('email');
   const [formData, setFormData] = useState({
     login: "",
@@ -251,6 +252,9 @@ const startSignInFlow = async () => {
 
         if (userFromApi && token) {
           await login(userFromApi, token, chatRoomToken);
+          const profileKey = userFromApi?.id ? `profileCompleted:${userFromApi.id}` : null;
+await AsyncStorage.setItem(profileKey, 'true');
+updateUser({ ...userFromApi, role: "pet", profileCompleted: true });
           Alert.alert("✅ Login successful!");
           navigation.navigate('HomePage');
         } else {
@@ -284,7 +288,10 @@ const startSignInFlow = async () => {
 
             if (userFromApi && token) {
               await login(userFromApi, token, chatRoomToken);
-              Alert.alert("✅ Login successful!");
+                const profileKey = userFromApi?.id ? `profileCompleted:${userFromApi.id}` : null;
+await AsyncStorage.setItem(profileKey, 'true');
+updateUser({ ...userFromApi, role: "pet", profileCompleted: true });
+          Alert.alert("✅ Login successful!");
               navigation.navigate('HomePage');
             }
             
@@ -370,7 +377,10 @@ const startSignInFlow = async () => {
       // Call context login -> saves to AsyncStorage and flips isLoggedIn
       await login(userFromApi, tokenFromApi, sessionFromApi);
 
-      Alert.alert('Login successful!');
+       const profileKey = userFromApi?.id ? `profileCompleted:${userFromApi.id}` : null;
+await AsyncStorage.setItem(profileKey, 'true');
+updateUser({ ...userFromApi, role: "pet", profileCompleted: true });
+          Alert.alert("✅ Login successful!");
       // Navigation will be handled by the auth context typically
 
     } catch (error) {

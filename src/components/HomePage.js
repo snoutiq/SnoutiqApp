@@ -7,12 +7,14 @@ import { useEffect, useRef, useState } from 'react';
 import { Alert, Animated, FlatList, Keyboard, KeyboardAvoidingView, Platform, SafeAreaView, StyleSheet, Text, TextInput, TouchableOpacity, View } from 'react-native';
 import { moderateScale, scale, verticalScale } from 'react-native-size-matters';
 import { useAuth } from '../context/AuthContext';
+import ProfileCompletionModalAuto from '../utils/ProfileCompletionModalAuto';
+
 
 const HomePage = () => {
   const navigation = useNavigation();
   const route = useRoute();
-  const { user, chatRoomToken, updateChatRoomToken } = useAuth();
-  const [chatRoomID, setchatRoomID] = useState(0);
+  const { user, chatRoomToken, updateChatRoomToken, justRegistered, clearJustRegistered } = useAuth();
+  const [chatRoomID, setChatRoomID] = useState(0); // Fixed variable name (was setchatRoomID)
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -34,6 +36,48 @@ const HomePage = () => {
 
   const genId = () => `${Date.now()}_${Math.floor(Math.random() * 100000)}`;
   const currentChatRoomToken = (route?.params && route.params.chat_room_token) ? route.params.chat_room_token : (chatRoomToken || "");
+
+  // Trigger modal based on justRegistered from AuthContext
+  useEffect(() => {
+    console.log('justRegistered from AuthContext:', justRegistered);
+    if (justRegistered) {
+      console.log('Showing ProfileCompletionModalAuto');
+    }
+  }, [justRegistered]);
+
+  const handleModalSubmit = async (formData) => {
+    try {
+      setIsLoading(true);
+      const userId = await AsyncStorage.getItem('userId');
+      const email = await AsyncStorage.getItem('userEmail');
+      const google_token = await AsyncStorage.getItem('googleSub');
+      console.log('Submitting pet details:', { userId, email, google_token, formData });
+
+      const payload = {
+        user_id: userId,
+        pet_name: formData.petName,
+        pet_type: formData.petType,
+        pet_gender: formData.petGender,
+        pet_age: formData.petAge,
+        breed: formData.petBreed,
+        pet_weight: formData.petWeight,
+      };
+
+      const response = await axios.post("https://snoutiq.com/backend/api/pet-details", payload);
+      
+      if (response.data.status === "success") {
+        Alert.alert("Success", "Pet details saved successfully!");
+        await clearJustRegistered(); // Clear justRegistered flag
+      } else {
+        Alert.alert("Error", response.data.message || "Failed to save pet details.");
+      }
+    } catch (error) {
+      console.error("Error saving pet details:", error.response?.data || error.message);
+      Alert.alert("Error", "Failed to save pet details. Please try again.");
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -73,7 +117,7 @@ const HomePage = () => {
 
       if (res.data?.chat_room_token && res.data?.chat_room_id) {
         updateChatRoomToken(res.data.chat_room_token);
-        setchatRoomID(res.data.chat_room_id);
+        setChatRoomID(res.data.chat_room_id);
         setMessages([{
           id: genId(),
           text: "Hello! I'm your Pet Care Assistant. I can help with pet health advice, training tips, behavior questions, and more. What would you like to know about your furry friend?",
@@ -86,7 +130,7 @@ const HomePage = () => {
 
       if (res.data?.room && res.data?.chats) {
         updateChatRoomToken(res.data.room.chat_room_token);
-        setchatRoomID(res.data.room.id);
+        setChatRoomID(res.data.room.id);
 
         const msgs = res.data.chats
           .filter(chat => chat.question || chat.answer)
@@ -246,7 +290,7 @@ const HomePage = () => {
   };
 
   const handleSend = () => {
-    if (!inputText.trim() || sending) return;
+    if (!inputText.trim() || sending || justRegistered) return;
     const textToSend = inputText;
     setInputText('');
     handleSendMessage(textToSend);
@@ -382,6 +426,7 @@ const HomePage = () => {
                   <TouchableOpacity
                     style={styles.emergencyButton}
                     onPress={() => handleEmergencyAction('appointment', item)}
+                    disabled={justRegistered}
                   >
                     <Ionicons
                       name="calendar"
@@ -397,6 +442,7 @@ const HomePage = () => {
                   <TouchableOpacity
                     style={styles.emergencyButton}
                     onPress={() => handleEmergencyAction('video', item)}
+                    disabled={justRegistered}
                   >
                     <Ionicons
                       name="videocam"
@@ -416,12 +462,13 @@ const HomePage = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={{ flex: 1 }}>
+      <View style={{ flex: 1, opacity: justRegistered ? 0.3 : 1, pointerEvents: justRegistered ? 'none' : 'auto' }}>
         <View style={{ flexDirection: "row", justifyContent: "space-between", backgroundColor: "#2563EB", borderColor: "grey", alignItems: "center", paddingVertical: moderateScale(10), paddingHorizontal: moderateScale(10) }}>
           <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
             <TouchableOpacity
               style={styles.profileButton}
               onPress={() => navigation.openDrawer()}
+              disabled={justRegistered}
             >
               <View style={styles.profileAvatar}>
                 <Ionicons name="menu" size={scale(18)} color="#2563EB" />
@@ -441,7 +488,7 @@ const HomePage = () => {
               <View style={styles.weatherInfo}>
                 <Ionicons
                   name={weatherData.weather === 'Sunny' ? 'sunny' : 'cloud'}
-                  size={scale(20)}
+                  size={scale(18)}
                   color="#FFD700"
                 />
                 <Text style={styles.weatherText}>
@@ -465,9 +512,15 @@ const HomePage = () => {
         />
       </View>
 
+      <ProfileCompletionModalAuto
+        visible={justRegistered}
+        onSubmit={handleModalSubmit}
+        onClose={async () => await clearJustRegistered()}
+      />
+
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.inputContainer}
+        style={[styles.inputContainer, { opacity: justRegistered ? 0.3 : 1 }]}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         <View style={styles.inputWrapper}>
@@ -480,16 +533,16 @@ const HomePage = () => {
               placeholderTextColor="#94a3b8"
               multiline
               maxLength={500}
-              editable={!sending}
+              editable={!sending && !justRegistered}
             />
             <View style={styles.inputActions}>
-              <TouchableOpacity style={styles.attachButton}>
+              <TouchableOpacity style={styles.attachButton} disabled={justRegistered}>
                 <Ionicons name="attach" size={scale(16)} color="#64748b" />
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.sendButton, (!inputText.trim() || sending) && styles.sendButtonDisabled]}
+                style={[styles.sendButton, (!inputText.trim() || sending || justRegistered) && styles.sendButtonDisabled]}
                 onPress={handleSend}
-                disabled={!inputText.trim() || sending}
+                disabled={!inputText.trim() || sending || justRegistered}
               >
                 <Ionicons name="send" size={scale(16)} color="white" />
               </TouchableOpacity>
@@ -498,13 +551,25 @@ const HomePage = () => {
         </View>
          
         <View style={styles.quickActionButtonsContainer}>
-          <TouchableOpacity style={styles.quickActionButton} onPress={() => handleSendMessage("Tell me about my pet's health")}>
+          <TouchableOpacity 
+            style={styles.quickActionButton} 
+            onPress={() => handleSendMessage("Tell me about my pet's health")} 
+            disabled={justRegistered}
+          >
             <Text style={styles.quickActionButtonText}>Pet Health</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionButton} onPress={() => handleSendMessage("Give me training tips for my pet")}>
+          <TouchableOpacity 
+            style={styles.quickActionButton} 
+            onPress={() => handleSendMessage("Give me training tips for my pet")} 
+            disabled={justRegistered}
+          >
             <Text style={styles.quickActionButtonText}>Training Tips</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.quickActionButton} onPress={() => handleSendMessage("Help me with behavior questions")}>
+          <TouchableOpacity 
+            style={styles.quickActionButton} 
+            onPress={() => handleSendMessage("Help me with behavior questions")} 
+            disabled={justRegistered}
+          >
             <Text style={styles.quickActionButtonText}>Behavior Qs</Text>
           </TouchableOpacity>
         </View>
