@@ -33,9 +33,9 @@ const petGenderOptions = [
   { label: "Female", value: "female" },
 ];
 
-const homeVisitOptions = [
-  { label: "Yes", value: "yes" },
-  { label: "No", value: "no" },
+const referenceVisitOptions = [
+  { label: "Inhouse Visit", value: "inhouse_visit" },
+  { label: "Clinic Visit", value: "clinic_visit" },
 ];
 
 const catBreedOptions = [
@@ -155,7 +155,7 @@ export default function ProfileCompletionModalAuto({ onComplete }) {
     petAgeYears: '',
     petAgeMonths: '',
     petBreed: '',
-    homeVisit: '',
+    referenceVisit: '',
     petDoc1: null,
     petDoc2: null,
   });
@@ -165,6 +165,18 @@ export default function ProfileCompletionModalAuto({ onComplete }) {
 
   // Helper: profile key
   const profileKey = user?.id ? `profileCompleted:${user.id}` : null;
+
+  // Calculate decimal age for display and API
+// Replace your current calculateDecimalAge with this:
+const calculateDecimalAge = () => {
+  const years = formData.petAgeYears || "0";
+  const months = formData.petAgeMonths || "0";
+
+  if (!years && !months) return "";
+
+  return `${years}.${months}`; // e.g. "3.5"
+};
+
 
   // Read flag and determine visibility
   const checkFlag = async () => {
@@ -193,7 +205,7 @@ export default function ProfileCompletionModalAuto({ onComplete }) {
         timeout: 10000,
       });
       
-      console.log('📥 API Response:', JSON.stringify(response.data, null, 2));
+      // console.log('📥 API Response:', JSON.stringify(response.data, null, 2));
 
       if (response.data.status === "success" && response.data.breeds) {
         const breeds = [];
@@ -288,10 +300,10 @@ export default function ProfileCompletionModalAuto({ onComplete }) {
       petName: user?.petName ?? '',
       petType: user?.petType ?? '',
       petGender: user?.petGender ?? '',
-      petAgeYears: user?.petAge ? Math.floor(user.petAge / 12).toString() : '',
-      petAgeMonths: user?.petAge ? (user.petAge % 12).toString() : '',
+      petAgeYears: user?.petAge ? Math.floor(user.petAge).toString() : '',
+      petAgeMonths: user?.petAge ? Math.round((user.petAge % 1) * 12).toString() : '',
       petBreed: user?.petBreed ?? '',
-      homeVisit: user?.homeVisit ?? '',
+      referenceVisit: user?.referenceVisit ?? '',
       petDoc1: null,
       petDoc2: null,
     });
@@ -346,8 +358,8 @@ export default function ProfileCompletionModalAuto({ onComplete }) {
       newErrors.petBreed = "Pet breed is required";
       valid = false;
     }
-    if (!formData.homeVisit) {
-      newErrors.homeVisit = "Home visit preference is required";
+    if (!formData.referenceVisit) {
+      newErrors.referenceVisit = "Reference visit preference is required";
       valid = false;
     }
 
@@ -373,20 +385,28 @@ export default function ProfileCompletionModalAuto({ onComplete }) {
       submitData.append("pet_type", formData.petType);
       submitData.append("pet_name", formData.petName.trim());
       submitData.append("pet_gender", formData.petGender);
-      submitData.append("home_visit", formData.homeVisit);
-
+      submitData.append("reference_visit", formData.referenceVisit);
       // Force send role
       submitData.append("role", "pet");
 
-      // Convert years+months → total months
-      const years = parseInt(formData.petAgeYears || 0, 10);
-      const months = parseInt(formData.petAgeMonths || 0, 10);
-      const totalMonths = years * 12 + months;
-      submitData.append("pet_age", totalMonths);
+      // Send pet_age as decimal years
+      const decimalAge = calculateDecimalAge();
+      submitData.append("pet_age", decimalAge);
 
       submitData.append("breed", formData.petBreed);
       if (formData.petDoc1) submitData.append("pet_doc1", formData.petDoc1);
       if (formData.petDoc2) submitData.append("pet_doc2", formData.petDoc2);
+
+      console.log("Submitting payload:", {
+        user_id: user?.id,
+        pet_type: formData.petType,
+        pet_name: formData.petName.trim(),
+        pet_gender: formData.petGender,
+        reference_visit: formData.referenceVisit,
+        role: "pet",
+        pet_age: decimalAge,
+        breed: formData.petBreed,
+      });
 
       const res = await axios.post(
         "https://snoutiq.com/backend/api/auth/register",
@@ -562,6 +582,12 @@ export default function ProfileCompletionModalAuto({ onComplete }) {
                     keyboardType="numeric"
                   />
                 </View>
+              {(formData.petAgeYears || formData.petAgeMonths) && (
+  <Text style={styles.ageDisplay}>
+    Age: {calculateDecimalAge()} years
+  </Text>
+)}
+
                 {errors.petAgeYears && touched.petAgeYears && <Text style={styles.errorText}>{errors.petAgeYears}</Text>}
               </View>
             </View>
@@ -585,16 +611,16 @@ export default function ProfileCompletionModalAuto({ onComplete }) {
 
               <View style={[styles.inputContainer, styles.halfWidth]}>
                 <CustomDropdown
-                  title="Home Visit *"
-                  value={formData.homeVisit}
+                  title="Reference Visit *"
+                  value={formData.referenceVisit}
                   onSelect={(value) => {
-                    setFormData(prev => ({ ...prev, homeVisit: value }));
-                    setErrors(prev => ({ ...prev, homeVisit: null }));
-                    setTouched(prev => ({ ...prev, homeVisit: true }));
+                    setFormData(prev => ({ ...prev, referenceVisit: value }));
+                    setErrors(prev => ({ ...prev, referenceVisit: null }));
+                    setTouched(prev => ({ ...prev, referenceVisit: true }));
                   }}
-                  options={homeVisitOptions}
-                  error={errors.homeVisit && touched.homeVisit ? errors.homeVisit : null}
-                  placeholder="Select home visit"
+                  options={referenceVisitOptions}
+                  error={errors.referenceVisit && touched.referenceVisit ? errors.referenceVisit : null}
+                  placeholder="Select reference visit"
                 />
               </View>
             </View>
@@ -704,6 +730,13 @@ const styles = StyleSheet.create({
   ageInput: {
     width: '48%',
     marginRight: scale(8),
+  },
+  ageDisplay: {
+    fontSize: moderateScale(12),
+    color: '#2c3e50',
+    fontWeight: '500',
+    marginTop: verticalScale(4),
+    marginLeft: scale(2),
   },
   dropdownContainer: {
     paddingHorizontal: 0,

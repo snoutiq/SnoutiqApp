@@ -1,9 +1,9 @@
 import { NavigationContainer } from '@react-navigation/native';
 import { useEffect, useState } from 'react';
-import { ActivityIndicator, View } from 'react-native';
+import { ActivityIndicator, StatusBar } from 'react-native';
 import { PaperProvider } from 'react-native-paper';
-import { SafeAreaProvider } from 'react-native-safe-area-context';
 
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import {
   addNotificationListeners,
@@ -14,18 +14,23 @@ import AuthStack from './src/navigation/AuthStack';
 import { navigationRef } from './src/navigation/RootNavigation';
 
 const App = () => (
-  <SafeAreaProvider>
+  <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
+    {/* Add StatusBar here */}
+    <StatusBar
+      barStyle="light-content" // Light text/icons for dark background
+      backgroundColor="#2563EB" // Your hex color
+    />
     <PaperProvider>
       <AuthProvider>
         <AppNav />
       </AuthProvider>
     </PaperProvider>
-  </SafeAreaProvider>
+  </SafeAreaView>
 );
 
 const AppNav = () => {
   const { isLoggedIn, token: jwt, isLoading } = useAuth();
-  const [refreshKey, setRefreshKey] = useState(0); 
+  const [refreshKey, setRefreshKey] = useState(0);
 
   // Function to force refresh
   const forceRefresh = () => {
@@ -36,7 +41,11 @@ const AppNav = () => {
     if (!isLoggedIn || !jwt) return;
 
     const setupNotifications = async () => {
-      await registerForPushNotificationsAsync(jwt);
+      try {
+        await registerForPushNotificationsAsync(jwt);
+      } catch (error) {
+        console.error('Failed to set up push notifications:', error);
+      }
     };
 
     const notificationListeners = addNotificationListeners({
@@ -57,16 +66,19 @@ const AppNav = () => {
 
   if (isLoading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
+      <SafeAreaView
+        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        edges={['top', 'bottom', 'left', 'right']}
+      >
         <ActivityIndicator size="large" color="#0000ff" />
-      </View>
+      </SafeAreaView>
     );
   }
 
   return (
-    <NavigationContainer 
+    <NavigationContainer
       ref={navigationRef}
-      key={refreshKey} 
+      key={refreshKey}
     >
       {isLoggedIn ? <AppDrawer forceRefresh={forceRefresh} /> : <AuthStack />}
     </NavigationContainer>

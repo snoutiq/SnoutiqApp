@@ -9,7 +9,6 @@ import {
   FlatList,
   Image,
   Platform,
-  StatusBar,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -216,11 +215,6 @@ const CustomDrawerContent = ({ navigation }) => {
 const AppDrawer = () => {
   return (
     <>
-      <StatusBar
-        backgroundColor="#1783BB"
-        barStyle="light-content"
-        translucent={Platform.OS === 'android' ? false : true}
-      />
       <Drawer.Navigator
         drawerContent={(props) => <CustomDrawerContent {...props} />}
         screenOptions={{
@@ -254,7 +248,7 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#E0E0E0',
     alignItems: 'center',
-    marginTop: Platform.OS === 'ios' ? verticalScale(30) : StatusBar.currentHeight || 0,
+    marginTop: verticalScale(30) 
   },
   avatar: {
     width: moderateScale(80),

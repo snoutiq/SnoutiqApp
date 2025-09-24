@@ -9,12 +9,11 @@ import { moderateScale, scale, verticalScale } from 'react-native-size-matters';
 import { useAuth } from '../context/AuthContext';
 import ProfileCompletionModalAuto from '../utils/ProfileCompletionModalAuto';
 
-
 const HomePage = () => {
   const navigation = useNavigation();
   const route = useRoute();
   const { user, chatRoomToken, updateChatRoomToken, justRegistered, clearJustRegistered } = useAuth();
-  const [chatRoomID, setChatRoomID] = useState(0); // Fixed variable name (was setchatRoomID)
+  const [chatRoomID, setChatRoomID] = useState(0);
   const [messages, setMessages] = useState([
     {
       id: '1',
@@ -37,7 +36,6 @@ const HomePage = () => {
   const genId = () => `${Date.now()}_${Math.floor(Math.random() * 100000)}`;
   const currentChatRoomToken = (route?.params && route.params.chat_room_token) ? route.params.chat_room_token : (chatRoomToken || "");
 
-  // Trigger modal based on justRegistered from AuthContext
   useEffect(() => {
     console.log('justRegistered from AuthContext:', justRegistered);
     if (justRegistered) {
@@ -67,7 +65,7 @@ const HomePage = () => {
       
       if (response.data.status === "success") {
         Alert.alert("Success", "Pet details saved successfully!");
-        await clearJustRegistered(); // Clear justRegistered flag
+        await clearJustRegistered();
       } else {
         Alert.alert("Error", response.data.message || "Failed to save pet details.");
       }
@@ -259,7 +257,7 @@ const HomePage = () => {
 
       setMessages(prev => prev.filter(m => m.id !== thinkingId));
 
-      const fullText = res.data?.chat?.answer || res.data?.answer || "⚠️ No response";
+      const fullText = (res.data?.chat?.answer || res.data?.answer || "⚠️ No response").trim();
       const serverContextToken = res.data?.chat?.context_token || res.data?.context_token;
       const serverChatRoomToken = res.data?.chat?.chat_room_token || res.data?.chat_room_token;
       const emergencyStatus = res.data?.emergency_status || null;
@@ -462,24 +460,24 @@ const HomePage = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <View style={{ flex: 1, opacity: justRegistered ? 0.3 : 1, pointerEvents: justRegistered ? 'none' : 'auto' }}>
-        <View style={{ flexDirection: "row", justifyContent: "space-between", backgroundColor: "#2563EB", borderColor: "grey", alignItems: "center", paddingVertical: moderateScale(10), paddingHorizontal: moderateScale(10) }}>
-          <View style={{ flexDirection: "row", alignItems: "center", justifyContent: "space-between" }}>
-            <TouchableOpacity
-              style={styles.profileButton}
-              onPress={() => navigation.openDrawer()}
-              disabled={justRegistered}
-            >
-              <View style={styles.profileAvatar}>
-                <Ionicons name="menu" size={scale(18)} color="#2563EB" />
-              </View>
-            </TouchableOpacity>
-            <View style={[styles.headerText, { marginLeft: moderateScale(10) }]}>
-              <Text style={styles.headerTitle}>Pet Care Assistant</Text>
-              <View style={styles.statusContainer}>
-                <View style={styles.onlineIndicator} />
-                <Text style={styles.headerSubtitle}>AI-powered pet advice</Text>
-              </View>
+      {/* Header */}
+      <View style={styles.header}>
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            style={styles.profileButton}
+            onPress={() => navigation.openDrawer()}
+            disabled={justRegistered}
+          >
+            <View style={styles.profileAvatar}>
+              <Ionicons name="menu" size={scale(18)} color="#2563EB" />
+            </View>
+          </TouchableOpacity>
+          
+          <View style={styles.headerText}>
+            <Text style={styles.headerTitle}>Pet Care Assistant</Text>
+            <View style={styles.statusContainer}>
+              <View style={styles.onlineIndicator} />
+              <Text style={styles.headerSubtitle}>AI-powered pet advice</Text>
             </View>
           </View>
 
@@ -500,27 +498,23 @@ const HomePage = () => {
             )}
           </View>
         </View>
-
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          renderItem={renderMessage}
-          keyExtractor={item => item.id}
-          style={styles.messagesList}
-          contentContainerStyle={styles.messagesContainer}
-          showsVerticalScrollIndicator={false}
-        />
       </View>
 
-      <ProfileCompletionModalAuto
-        visible={justRegistered}
-        onSubmit={handleModalSubmit}
-        onClose={async () => await clearJustRegistered()}
+      {/* Messages List */}
+      <FlatList
+        ref={flatListRef}
+        data={messages}
+        renderItem={renderMessage}
+        keyExtractor={item => item.id}
+        style={styles.messagesList}
+        contentContainerStyle={styles.messagesContainer}
+        showsVerticalScrollIndicator={false}
       />
 
+      {/* Input Container */}
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={[styles.inputContainer, { opacity: justRegistered ? 0.3 : 1 }]}
+        style={styles.inputContainer}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
         <View style={styles.inputWrapper}>
@@ -574,6 +568,13 @@ const HomePage = () => {
           </TouchableOpacity>
         </View>
       </KeyboardAvoidingView>
+
+      {/* Modal */}
+      <ProfileCompletionModalAuto
+        visible={justRegistered}
+        onSubmit={handleModalSubmit}
+        onClose={async () => await clearJustRegistered()}
+      />
     </SafeAreaView>
   );
 };
@@ -584,26 +585,24 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc'
   },
   header: {
-    backgroundColor: 'white',
-    borderBottomWidth: 1,
-    borderBottomColor: '#e2e8f0',
+    backgroundColor: '#2563EB',
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(12),
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 3,
-    elevation: 3,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 4,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingHorizontal: scale(20),
-    paddingVertical: verticalScale(16),
+    justifyContent: 'space-between',
   },
   weatherContainer: {
     padding: scale(8),
     borderRadius: scale(20),
     backgroundColor: '#d3d3d3',
-    marginRight: moderateScale(5)
   },
   weatherInfo: {
     flexDirection: 'row',
@@ -616,7 +615,9 @@ const styles = StyleSheet.create({
     marginLeft: scale(4),
   },
   headerText: {
+    flex: 1,
     alignItems: 'center',
+    marginLeft: scale(16),
   },
   headerTitle: {
     fontSize: moderateScale(16),
@@ -714,6 +715,7 @@ const styles = StyleSheet.create({
   botBubble: {
     backgroundColor: '#f1f5f9',
     borderBottomLeftRadius: scale(6),
+    paddingTop: verticalScale(6),
   },
   thinkingBubble: {
     backgroundColor: '#f1f5f9',
@@ -875,8 +877,7 @@ const styles = StyleSheet.create({
     paddingVertical: verticalScale(8), 
     marginHorizontal: scale(4), 
     borderRadius: scale(10), 
-    justifyContent: 'center', 
-    alignItems: 'center' 
+    justifyContent: 'center',
   },
   quickActionButtonText: { 
     color: 'black', 
