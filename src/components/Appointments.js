@@ -506,6 +506,7 @@ import {
   ScaledSheet,
   verticalScale
 } from 'react-native-size-matters';
+import { useAuth } from '../context/AuthContext';
 
 const colors = {
   primary: '#2563EB',
@@ -524,6 +525,7 @@ const colors = {
 };
 
 const AppointmentScreen = () => {
+   const { user } = useAuth();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -533,7 +535,7 @@ const AppointmentScreen = () => {
   const fetchDoctors = async () => {
     try {
       setError(null);
-      const response = await axios.get('https://snoutiq.com/backend/api/nearby-vets?user_id=293');
+      const response = await axios.get(`https://snoutiq.com/backend/api/nearby-vets?user_id=${user.id}`);
       
       // console.log('API Response:', response.data);
       

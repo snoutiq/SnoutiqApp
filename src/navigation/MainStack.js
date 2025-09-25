@@ -10,7 +10,6 @@ const Stack = createNativeStackNavigator();
 const MainStack = () => (
   <Stack.Navigator screenOptions={{ headerShown: false }}>
     <Stack.Screen name="Tabs" component={BottomTabs} />
-   {/* <Stack.Screen name="Home" component={HomePage} options={{ headerShown: true, title: 'Home Page' }} /> */}
    <Stack.Screen name="LoginScreen" component={LoginScreen} options={{ headerShown: false, title: 'Login Screen' }} />
    <Stack.Screen name="PetParentEdit" component={PetParentEdit} options={{ headerShown: false, title: 'Pet Parent Edit' }} />
    <Stack.Screen name="SettingsScreen" component={SettingsScreen} options={{ headerShown: false, title: 'Setting Screen' }} />

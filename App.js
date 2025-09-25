@@ -13,12 +13,21 @@ import AppDrawer from './src/navigation/AppDrawer';
 import AuthStack from './src/navigation/AuthStack';
 import { navigationRef } from './src/navigation/RootNavigation';
 
-const App = () => (
-  <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
+const App = () => {
+
+  useEffect(() => {
+     StatusBar.setBarStyle( 'light-content',true)
+  StatusBar.setBackgroundColor("#0996AE")
+  }, [])
+  
+
+
+  return(<SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
     {/* Add StatusBar here */}
-    <StatusBar
-      barStyle="light-content" // Light text/icons for dark background
-      backgroundColor="#2563EB" // Your hex color
+  <StatusBar
+      backgroundColor='#2563EB'
+      barStyle="light-content" 
+      translucent={false}
     />
     <PaperProvider>
       <AuthProvider>
@@ -26,7 +35,7 @@ const App = () => (
       </AuthProvider>
     </PaperProvider>
   </SafeAreaView>
-);
+)};
 
 const AppNav = () => {
   const { isLoggedIn, token: jwt, isLoading } = useAuth();

@@ -28,6 +28,8 @@ const HomePage = () => {
   const [isKeyboardVisible, setKeyboardVisible] = useState(false);
   const flatListRef = useRef(null);
   const fadeAnim = useRef(new Animated.Value(0)).current;
+  const pulseAnim = useRef(new Animated.Value(1)).current;
+  const slideAnim = useRef(new Animated.Value(100)).current;
   const [isLoading, setIsLoading] = useState(true);
   const [sending, setSending] = useState(false);
   const [contextToken, setContextToken] = useState("");
@@ -42,6 +44,35 @@ const HomePage = () => {
       console.log('Showing ProfileCompletionModalAuto');
     }
   }, [justRegistered]);
+
+  // Enhanced animations
+  useEffect(() => {
+    // Pulse animation for online indicator
+    const pulseAnimation = Animated.loop(
+      Animated.sequence([
+        Animated.timing(pulseAnim, {
+          toValue: 1.3,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+        Animated.timing(pulseAnim, {
+          toValue: 1,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ])
+    );
+    pulseAnimation.start();
+
+    // Slide in animation for input
+    Animated.timing(slideAnim, {
+      toValue: 0,
+      duration: 800,
+      useNativeDriver: true,
+    }).start();
+
+    return () => pulseAnimation.stop();
+  }, []);
 
   const handleModalSubmit = async (formData) => {
     try {
@@ -208,7 +239,7 @@ const HomePage = () => {
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
-      duration: 300,
+      duration: 500,
       useNativeDriver: true,
     }).start();
   }, [messages]);
@@ -350,16 +381,30 @@ const HomePage = () => {
     console.log('Profile pressed');
   };
 
-  const renderMessage = ({ item }) => (
-    <Animated.View style={[styles.messageContainer, { opacity: fadeAnim }]}>
+  const renderMessage = ({ item, index }) => (
+    <Animated.View 
+      style={[
+        styles.messageContainer, 
+        { 
+          opacity: fadeAnim,
+          transform: [{
+            translateX: item.isUser ? slideAnim : Animated.multiply(slideAnim, -1)
+          }]
+        }
+      ]}
+    >
       <View style={styles.messageAvatar}>
-        <View style={[styles.avatarGlow, item.isUser && styles.userAvatarGlow]}>
+        <Animated.View style={[
+          styles.avatarGlow, 
+          item.isUser && styles.userAvatarGlow,
+          !item.isUser && { transform: [{ scale: pulseAnim }] }
+        ]}>
           <Ionicons
             name={item.isUser ? "person" : "paw"}
             size={scale(18)}
-            color="#2563EB"
+            color={item.isUser ? "#7c3aed" : "#2563EB"}
           />
-        </View>
+        </Animated.View>
       </View>
 
       <View style={styles.messageContent}>
@@ -370,9 +415,9 @@ const HomePage = () => {
         ]}>
           {item.isThinking ? (
             <View style={styles.thinkingDots}>
-              <View style={[styles.dot, styles.dot1]} />
-              <View style={[styles.dot, styles.dot2]} />
-              <View style={[styles.dot, styles.dot3]} />
+              <Animated.View style={[styles.dot, styles.dot1]} />
+              <Animated.View style={[styles.dot, styles.dot2]} />
+              <Animated.View style={[styles.dot, styles.dot3]} />
             </View>
           ) : (
             <Text style={item.isUser ? styles.userMessageText : styles.botMessageText}>
@@ -397,7 +442,7 @@ const HomePage = () => {
                     <Ionicons
                       name="thumbs-up"
                       size={scale(14)}
-                      color={item.feedback === 'like' ? '#2563EB' : '#64748b'}
+                      color={item.feedback === 'like' ? '#10b981' : '#64748b'}
                     />
                   </TouchableOpacity>
                   <TouchableOpacity
@@ -410,7 +455,7 @@ const HomePage = () => {
                     <Ionicons
                       name="thumbs-down"
                       size={scale(14)}
-                      color={item.feedback === 'dislike' ? '#2563EB' : '#64748b'}
+                      color={item.feedback === 'dislike' ? '#ef4444' : '#64748b'}
                     />
                   </TouchableOpacity>
                 </View>
@@ -460,8 +505,17 @@ const HomePage = () => {
 
   return (
     <SafeAreaView style={styles.container}>
+
+      {/* Modal */}
+      <ProfileCompletionModalAuto
+        visible={justRegistered}
+        onSubmit={handleModalSubmit}
+        onClose={async () => await clearJustRegistered()}
+      />
+      
       {/* Header */}
       <View style={styles.header}>
+        <View style={styles.headerBackground} />
         <View style={styles.headerContent}>
           <TouchableOpacity
             style={styles.profileButton}
@@ -476,7 +530,12 @@ const HomePage = () => {
           <View style={styles.headerText}>
             <Text style={styles.headerTitle}>Pet Care Assistant</Text>
             <View style={styles.statusContainer}>
-              <View style={styles.onlineIndicator} />
+              <Animated.View 
+                style={[
+                  styles.onlineIndicator, 
+                  { transform: [{ scale: pulseAnim }] }
+                ]} 
+              />
               <Text style={styles.headerSubtitle}>AI-powered pet advice</Text>
             </View>
           </View>
@@ -517,7 +576,12 @@ const HomePage = () => {
         style={styles.inputContainer}
         keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
-        <View style={styles.inputWrapper}>
+        <Animated.View 
+          style={[
+            styles.inputWrapper,
+            { transform: [{ translateY: slideAnim }] }
+          ]}
+        >
           <View style={styles.textInputContainer}>
             <TextInput
               style={styles.textInput}
@@ -542,39 +606,41 @@ const HomePage = () => {
               </TouchableOpacity>
             </View>
           </View>
-        </View>
+        </Animated.View>
          
-        <View style={styles.quickActionButtonsContainer}>
+        <Animated.View 
+          style={[
+            styles.quickActionButtonsContainer,
+            { transform: [{ translateY: slideAnim }] }
+          ]}
+        >
           <TouchableOpacity 
-            style={styles.quickActionButton} 
+            style={[styles.quickActionButton, styles.healthButton]} 
             onPress={() => handleSendMessage("Tell me about my pet's health")} 
             disabled={justRegistered}
           >
-            <Text style={styles.quickActionButtonText}>Pet Health</Text>
+            <Ionicons name="medical" size={scale(16)} color="#10b981" />
+            <Text style={[styles.quickActionButtonText, styles.healthText]}>Pet Health</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={styles.quickActionButton} 
+            style={[styles.quickActionButton, styles.trainingButton]} 
             onPress={() => handleSendMessage("Give me training tips for my pet")} 
             disabled={justRegistered}
           >
-            <Text style={styles.quickActionButtonText}>Training Tips</Text>
+            <Ionicons name="school" size={scale(16)} color="#f59e0b" />
+            <Text style={[styles.quickActionButtonText, styles.trainingText]}>Training Tips</Text>
           </TouchableOpacity>
           <TouchableOpacity 
-            style={styles.quickActionButton} 
+            style={[styles.quickActionButton, styles.behaviorButton]} 
             onPress={() => handleSendMessage("Help me with behavior questions")} 
             disabled={justRegistered}
           >
-            <Text style={styles.quickActionButtonText}>Behavior Qs</Text>
+            <Ionicons name="chatbubbles" size={scale(16)} color="#8b5cf6" />
+            <Text style={[styles.quickActionButtonText, styles.behaviorText]}>Behavior Qs</Text>
           </TouchableOpacity>
-        </View>
+        </Animated.View>
       </KeyboardAvoidingView>
 
-      {/* Modal */}
-      <ProfileCompletionModalAuto
-        visible={justRegistered}
-        onSubmit={handleModalSubmit}
-        onClose={async () => await clearJustRegistered()}
-      />
     </SafeAreaView>
   );
 };
@@ -585,24 +651,38 @@ const styles = StyleSheet.create({
     backgroundColor: '#f8fafc'
   },
   header: {
-    backgroundColor: '#2563EB',
+    position: 'relative',
     paddingHorizontal: scale(20),
     paddingVertical: verticalScale(12),
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    overflow: 'hidden',
+  },
+  headerBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: '#2563EB',
+    shadowColor: '#2563EB',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 8,
   },
   headerContent: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
+    position: 'relative',
+    zIndex: 1,
   },
   weatherContainer: {
-    padding: scale(8),
+    padding: scale(10),
     borderRadius: scale(20),
-    backgroundColor: '#d3d3d3',
+    backgroundColor: 'rgba(255, 255, 255, 0.2)',
+    backdropFilter: 'blur(10px)',
+    borderWidth: 1,
+    borderColor: 'rgba(255, 255, 255, 0.3)',
   },
   weatherInfo: {
     flexDirection: 'row',
@@ -610,8 +690,8 @@ const styles = StyleSheet.create({
   },
   weatherText: {
     fontSize: moderateScale(12),
-    color: '#1e293b',
-    fontWeight: '500',
+    color: 'white',
+    fontWeight: '600',
     marginLeft: scale(4),
   },
   headerText: {
@@ -620,11 +700,14 @@ const styles = StyleSheet.create({
     marginLeft: scale(16),
   },
   headerTitle: {
-    fontSize: moderateScale(16),
-    fontWeight: '700',
+    fontSize: moderateScale(18),
+    fontWeight: '800',
     color: 'white',
     marginBottom: verticalScale(2),
     textAlign: 'center',
+    textShadowColor: 'rgba(0, 0, 0, 0.1)',
+    textShadowOffset: { width: 0, height: 1 },
+    textShadowRadius: 2,
   },
   statusContainer: {
     flexDirection: 'row',
@@ -632,15 +715,20 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   onlineIndicator: {
-    width: scale(6),
-    height: scale(6),
-    borderRadius: scale(3),
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
     backgroundColor: '#10b981',
     marginRight: scale(6),
+    shadowColor: '#10b981',
+    shadowOffset: { width: 0, height: 0 },
+    shadowOpacity: 0.8,
+    shadowRadius: 4,
+    elevation: 3,
   },
   headerSubtitle: {
-    fontSize: moderateScale(11),
-    color: 'white',
+    fontSize: moderateScale(12),
+    color: 'rgba(255, 255, 255, 0.9)',
     fontWeight: '500',
     textAlign: 'center',
   },
@@ -648,90 +736,97 @@ const styles = StyleSheet.create({
     padding: scale(4),
   },
   profileAvatar: {
-    width: scale(36),
-    height: scale(36),
-    borderRadius: scale(18),
-    backgroundColor: '#dbeafe',
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
   },
   messagesList: {
     flex: 1,
   },
   messagesContainer: {
     paddingHorizontal: scale(20),
-    paddingVertical: verticalScale(16),
+    paddingVertical: verticalScale(20),
   },
   messageContainer: {
     flexDirection: 'row',
-    marginBottom: verticalScale(24),
+    marginBottom: verticalScale(28),
     alignItems: 'flex-start'
   },
   messageAvatar: {
-    marginRight: scale(12),
+    marginRight: scale(14),
     marginTop: verticalScale(4)
   },
   avatarGlow: {
-    width: scale(36),
-    height: scale(36),
-    borderRadius: scale(18),
+    width: scale(38),
+    height: scale(38),
+    borderRadius: scale(19),
     backgroundColor: '#dbeafe',
     justifyContent: 'center',
     alignItems: 'center',
     shadowColor: '#2563EB',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 3 },
+    shadowOpacity: 0.2,
+    shadowRadius: 6,
+    elevation: 4,
   },
   userAvatarGlow: {
-    backgroundColor: '#e0e7ff',
+    backgroundColor: '#f3e8ff',
+    shadowColor: '#7c3aed',
   },
   messageContent: {
     flex: 1,
     alignItems: 'flex-start',
   },
   messageBubble: {
-    paddingHorizontal: scale(18),
-    paddingVertical: verticalScale(14),
-    borderRadius: scale(20),
-    marginBottom: verticalScale(6),
-    maxWidth: '85%',
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(16),
+    borderRadius: scale(24),
+    marginBottom: verticalScale(8),
+    maxWidth: '88%',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 4,
+    elevation: 3,
   },
   userBubble: {
-    backgroundColor: '#e0e7ff',
-    borderBottomRightRadius: scale(6),
+    backgroundColor: '#f3e8ff',
+    borderBottomRightRadius: scale(8),
+    borderWidth: 1,
+    borderColor: 'rgba(124, 58, 237, 0.1)',
   },
   botBubble: {
-    backgroundColor: '#f1f5f9',
-    borderBottomLeftRadius: scale(6),
-    paddingTop: verticalScale(6),
+    backgroundColor: 'white',
+    borderBottomLeftRadius: scale(8),
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.1)',
   },
   thinkingBubble: {
-    backgroundColor: '#f1f5f9',
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(12),
+    backgroundColor: 'white',
+    paddingHorizontal: scale(18),
+    paddingVertical: verticalScale(14),
+    borderWidth: 1,
+    borderColor: 'rgba(37, 99, 235, 0.1)',
   },
   thinkingDots: {
     flexDirection: 'row',
     alignItems: 'center',
   },
   dot: {
-    width: scale(6),
-    height: scale(6),
-    borderRadius: scale(3),
-    backgroundColor: '#94a3b8',
-    marginHorizontal: scale(2),
+    width: scale(8),
+    height: scale(8),
+    borderRadius: scale(4),
+    backgroundColor: '#2563EB',
+    marginHorizontal: scale(3),
+    opacity: 0.6,
   },
   dot1: {},
   dot2: {},
@@ -740,7 +835,7 @@ const styles = StyleSheet.create({
     color: '#1e293b',
     fontSize: moderateScale(16),
     lineHeight: moderateScale(24),
-    fontWeight: '400',
+    fontWeight: '500',
   },
   botMessageText: {
     color: '#1e293b',
@@ -750,7 +845,7 @@ const styles = StyleSheet.create({
   },
   messageFooter: {
     width: '100%',
-    marginTop: verticalScale(4),
+    marginTop: verticalScale(6),
   },
   messageFooterRow: {
     flexDirection: 'row',
@@ -768,9 +863,9 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   feedbackButton: {
-    padding: scale(6),
-    marginLeft: scale(8),
-    borderRadius: scale(12),
+    padding: scale(8),
+    marginLeft: scale(6),
+    borderRadius: scale(16),
     backgroundColor: 'transparent',
   },
   feedbackButtonActive: {
