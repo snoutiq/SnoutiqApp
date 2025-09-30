@@ -14,24 +14,26 @@ import AuthStack from './src/navigation/AuthStack';
 import { navigationRef } from './src/navigation/RootNavigation';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+import LoaderScreen from './src/components/LoaderScreen';
 
 import { enableScreens } from 'react-native-screens';
 import { requestPermissionsWithRetry, checkCameraAudioPermissions } from './src/components/permissions';
 enableScreens();
 
 const App = () => (
-  <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom', 'left', 'right']}>
-    {/* Add StatusBar here */}
-    <StatusBar
-      barStyle="light-content" // Light text/icons for dark background
-      backgroundColor="#2563EB" // Your hex color
-    />
-    <PaperProvider>
-      <AuthProvider>
-        <AppNav />
-      </AuthProvider>
-    </PaperProvider>
-  </SafeAreaView>
+   <GestureHandlerRootView style={{ flex: 1 }}>
+      <SafeAreaProvider>
+        <PaperProvider>
+          <AuthProvider>
+            <StatusBar
+              barStyle="light-content"
+              backgroundColor="#816ee9ff"
+            />
+            <AppNav />
+          </AuthProvider>
+        </PaperProvider>
+      </SafeAreaProvider>
+    </GestureHandlerRootView>
 );
 
 const AppNav = () => {
@@ -148,16 +150,10 @@ const AppNav = () => {
     return () => clearInterval(interval);
   }, [isLoggedIn, permissionStatus.granted]);
 
-  if (isLoading) {
-    return (
-      <SafeAreaView
-        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
-        edges={['top', 'bottom', 'left', 'right']}
-      >
-        <ActivityIndicator size="large" color="#0000ff" />
-      </SafeAreaView>
-    );
-  }
+if (isLoading) {
+  return <LoaderScreen />;
+}
+
 
   return (
     <NavigationContainer

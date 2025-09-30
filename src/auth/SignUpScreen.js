@@ -312,7 +312,7 @@ const SignUpScreen = () => {
   };
 
   return (
-    <ImageBackground style={{flex:1,marginBottom:moderateScale(100)}} source={require("../assets/GirlHandlingDog.png")}>
+    <ImageBackground style={{flex:1,marginBottom:moderateScale(100)}} source={require("../assets/girlHandlingDog.png")}>
       <View style={styles.logoContainer}>
         <Image style={styles.logoImage} source={require("../assets/snoutiqBlueLogo.png")} />
       </View>

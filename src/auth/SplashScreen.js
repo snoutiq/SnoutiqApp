@@ -6,7 +6,6 @@ import {
     Dimensions,
     Image,
     SafeAreaView,
-    StatusBar,
     Text,
     TouchableOpacity,
     View
@@ -126,7 +125,6 @@ const SplashScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.lightBlue} />
       
       {/* Header Section */}
       <View style={styles.headerSection}>

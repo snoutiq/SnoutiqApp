@@ -16,6 +16,26 @@
       "eas": {
         "projectId": "89cfe25b-4816-4959-b703-8f297511131a"
       }
+    },
+    "android": {
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS"
+      ],
+      "package": "com.snoutiq.snoutiq_expo_app"
+    },
+    "ios": {
+      "infoPlist": {
+        "NSCameraUsageDescription": "This app needs camera access for video calls.",
+        "NSMicrophoneUsageDescription": "This app needs microphone access for video calls."
+      }
+    },
+    "icon": "../assets/favicon-512.webp",
+    "splash": {
+      "image": "../assets/favicon-512.webp",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
     }
   }
 }

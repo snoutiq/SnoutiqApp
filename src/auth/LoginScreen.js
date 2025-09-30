@@ -1147,7 +1147,7 @@ const LoginScreen = () => {
   };
 
   return (
-    <ImageBackground style={styles.backgroundImage} source={require("../assets/GirlHandlingDog.png")}>
+    <ImageBackground style={styles.backgroundImage} source={require("../assets/girlHandlingDog.png")}>
       <View style={styles.logoContainer}>
         <Image style={styles.logoImage} source={require("../assets/snoutiqBlueLogo.png")} />
       </View>

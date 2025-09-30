@@ -6,7 +6,7 @@ import {
     Dimensions,
     Image,
     SafeAreaView,
-    StatusBar,
+
     Text,
     TouchableOpacity,
     View
@@ -142,7 +142,6 @@ const WelcomeScreen = () => {
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor={colors.background} />
       
       {/* Header with Logo */}
       <View style={styles.headerSection}>
