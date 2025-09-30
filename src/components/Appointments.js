@@ -486,20 +486,27 @@
 
 
 
+
+
+
 import axios from 'axios';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Alert,
+  Dimensions,
   FlatList,
   Image,
   Linking,
+  Modal,
   RefreshControl,
   SafeAreaView,
+  ScrollView,
   Text,
   TouchableOpacity,
   View
 } from 'react-native';
+import RazorpayCheckout from 'react-native-razorpay';
 import {
   moderateScale,
   scale,
@@ -507,6 +514,8 @@ import {
   verticalScale
 } from 'react-native-size-matters';
 import { useAuth } from '../context/AuthContext';
+
+const { width: windowWidth, height } = Dimensions.get('window');
 
 const colors = {
   primary: '#2563EB',
@@ -524,20 +533,75 @@ const colors = {
   rating: '#FFC107'
 };
 
+// Razorpay key (using test key; switch to live key for production)
+const RAZORPAY_KEY_ID = 'rzp_test_1nhE9190sR3rkP';
+
 const AppointmentScreen = () => {
-   const { user } = useAuth();
+  const { user } = useAuth();
   const [doctors, setDoctors] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  
+  // Modal states
+  const [modalVisible, setModalVisible] = useState(false);
+  const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [selectedDate, setSelectedDate] = useState(null);
+  const [selectedTime, setSelectedTime] = useState(null);
+
+  // Calendar states
+  const [currentMonth, setCurrentMonth] = useState(new Date().getMonth());
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const flatListRef = useRef(null);
+
+  // Generate calendar days for specified month and year
+  const generateCalendarDays = (month, year) => {
+    const today = new Date();
+    const todayMidnight = new Date(today.getFullYear(), today.getMonth(), today.getDate());
+    const firstDay = new Date(year, month, 1);
+    const lastDay = new Date(year, month + 1, 0);
+    const daysInMonth = lastDay.getDate();
+    const startingDayOfWeek = firstDay.getDay();
+
+    const days = [];
+    
+    // Add empty cells for days before the first day of the month
+    for (let i = 0; i < startingDayOfWeek; i++) {
+      days.push(null);
+    }
+    
+    // Add all days of the month
+    for (let day = 1; day <= daysInMonth; day++) {
+      const date = new Date(year, month, day);
+      const isToday = date.toDateString() === today.toDateString();
+      const isPast = date < todayMidnight;
+      
+      days.push({
+        day,
+        date,
+        isToday,
+        isPast,
+        dayName: date.toLocaleDateString('en-US', { weekday: 'short' })
+      });
+    }
+    
+    return days;
+  };
+
+  const timeSlots = [
+    '09:00 AM', '09:30 AM', '10:00 AM', '10:30 AM', '11:00 AM', '11:30 AM',
+    '02:00 PM', '02:30 PM', '03:00 PM', '03:30 PM', '04:00 PM', '04:30 PM',
+    '05:00 PM', '05:30 PM', '06:00 PM'
+  ];
+
+  const weekDays = ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'];
 
   // Fetch doctors from API
   const fetchDoctors = async () => {
     try {
       setError(null);
       const response = await axios.get(`https://snoutiq.com/backend/api/nearby-vets?user_id=${user.id}`);
-      
-      // console.log('API Response:', response.data);
       
       if (response.data.status === 'success') {
         setDoctors(response.data.data);
@@ -560,6 +624,227 @@ const AppointmentScreen = () => {
   const onRefresh = () => {
     setRefreshing(true);
     fetchDoctors();
+  };
+
+  // Create Razorpay order, converting amount from rupees to paise for backend
+  const createRazorpayOrder = async (amountInRupees) => {
+    try {
+      const amountInPaise = parseFloat(amountInRupees) * 100; // Convert rupees to paise
+      console.log('Creating Razorpay order with amount (paise):', amountInPaise);
+      const response = await axios.post('https://snoutiq.com/backend/api/create-order', {
+        amount: amountInPaise, // Send amount in paise to backend
+        currency: 'INR'
+      });
+
+      console.log('Create order response:', response.data);
+
+      if (response.data.success && response.data.order_id && response.data.key) {
+        return {
+          orderId: response.data.order_id,
+          key: response.data.key
+        };
+      } else {
+        throw new Error('Invalid order response from server');
+      }
+    } catch (error) {
+      console.error('Error creating Razorpay order:', error);
+      Alert.alert('Error', 'Failed to create payment order. Please try again.');
+      return null;
+    }
+  };
+
+  // Verify payment
+  const verifyPayment = async (paymentData) => {
+    try {
+      const response = await axios.post('https://snoutiq.com/backend/api/rzp/verify', {
+        razorpay_payment_id: paymentData.razorpay_payment_id,
+        razorpay_order_id: paymentData.razorpay_order_id,
+        razorpay_signature: paymentData.razorpay_signature
+      });
+
+      return response.data.success;
+    } catch (error) {
+      console.error('Payment verification failed:', error);
+      return false;
+    }
+  };
+
+  // Handle Razorpay payment
+  const handleRazorpayPayment = async () => {
+    if (!selectedDoctor || !selectedDate || !selectedTime) {
+      Alert.alert('Error', 'Please select date and time before booking.');
+      return;
+    }
+
+    setPaymentLoading(true);
+
+    try {
+      // 1. Create order from backend, passing amount in rupees
+      console.log('Starting payment process for doctor:', selectedDoctor);
+      const orderData = await createRazorpayOrder(selectedDoctor.chat_price);
+      if (!orderData) {
+        setPaymentLoading(false);
+        return;
+      }
+
+      const { orderId, key } = orderData;
+
+      // 2. Razorpay options, converting amount to paise for Razorpay SDK
+      const options = {
+        description: `Appointment with ${selectedDoctor.formatted_address ? selectedDoctor.formatted_address.split(',')[0] : 'Veterinary Clinic'}`,
+        image: 'https://snoutiq.com/logo.webp',
+        currency: 'INR',
+        key: key,
+        amount: parseFloat(selectedDoctor.chat_price) * 100, // Convert rupees to paise for Razorpay
+        name: 'Snoutiq Veterinary Appointment',
+        order_id: orderId,
+        prefill: {
+          email: user.email || 'patient@example.com',
+          contact: user.phone || '9999999999',
+          name: user.name || 'Patient Name',
+        },
+        theme: { color: colors.primary },
+      };
+
+      console.log('Razorpay Options:', JSON.stringify(options, null, 2));
+      console.log('RazorpayCheckout:', RazorpayCheckout);
+
+      // 3. Check if RazorpayCheckout is available
+      if (!RazorpayCheckout || typeof RazorpayCheckout.open !== 'function') {
+        throw new Error('RazorpayCheckout module is not initialized. Please check library installation.');
+      }
+
+      // 4. Open Razorpay checkout
+      RazorpayCheckout.open(options)
+        .then(async (paymentData) => {
+          console.log('Payment Success:', paymentData);
+          const isVerified = await verifyPayment(paymentData);
+          
+          if (isVerified) {
+            await handlePaymentSuccess(paymentData);
+          } else {
+            throw new Error('Payment verification failed');
+          }
+        })
+        .catch((error) => {
+          setPaymentLoading(false);
+          console.error('Payment error:', error);
+          
+          if (error.code !== 0) { // 0 means user cancelled
+            Alert.alert(
+              'Payment Failed',
+              error.description || 'Payment was not completed. Please try again.',
+              [{ text: 'OK' }]
+            );
+          }
+        });
+    } catch (error) {
+      setPaymentLoading(false);
+      console.error('Payment process error:', error);
+      Alert.alert('Error', error.message || 'Something went wrong. Please try again.');
+    }
+  };
+
+  // Handle successful payment
+  const handlePaymentSuccess = async (paymentData) => {
+    try {
+      // Convert selectedTime to 24-hour format and calculate end time
+      const startTime = selectedTime;
+      const [hours, minutes] = startTime.split(':').map(part => part.replace(/\D/g, ''));
+      const isPM = startTime.includes('PM');
+      let hour24 = parseInt(hours, 10);
+      if (isPM && hour24 !== 12) hour24 += 12;
+      if (!isPM && hour24 === 12) hour24 = 0;
+      
+      // Calculate end time (assuming 1-hour appointment)
+      const endHour24 = hour24 + 1;
+      const endTime = `${endHour24.toString().padStart(2, '0')}:${minutes}`;
+      
+      // Format date as YYYY-MM-DD HH:MM:SS
+      const appointmentDateTime = `${selectedDate.date.toISOString().split('T')[0]} ${startTime.replace(/\s(AM|PM)/, '')}:00`;
+
+      // Prepare services array, ensuring price is in rupees
+      const services = [
+        {
+          service_id: "12313", // Placeholder: Replace with actual service ID
+          price: parseFloat(selectedDoctor.chat_price) // Price in rupees for backend
+        }
+      ];
+
+      // Save appointment to backend
+      const appointmentResponse = await axios.post('https://snoutiq.com/backend/api/store_booking', {
+        customer_type: "k", // Placeholder: Replace with actual customer type
+        customer_id: user.id.toString(),
+        customer_pet_id: "12334", // Placeholder: Replace with actual pet ID
+        date: appointmentDateTime,
+        start_time: startTime.replace(/\s(AM|PM)/, ''),
+        user_id: user.id.toString(),
+        end_time: endTime,
+        services: services,
+        groomer_employees_id: selectedDoctor.id.toString()
+      });
+
+      if (appointmentResponse.data.message === 'Booking booked successfully!') {
+        Alert.alert(
+          'Appointment Booked!', 
+          `Your appointment with ${selectedDoctor.formatted_address ? selectedDoctor.formatted_address.split(',')[0] : 'Veterinary Clinic'} has been scheduled for ${selectedDate.date.toDateString()} at ${selectedTime}`,
+          [
+            {
+              text: 'OK',
+              onPress: () => {
+                setModalVisible(false);
+                setSelectedDate(null);
+                setSelectedTime(null);
+                setSelectedDoctor(null);
+                setPaymentLoading(false);
+              }
+            }
+          ]
+        );
+      } else {
+        throw new Error('Failed to save appointment');
+      }
+    } catch (error) {
+      console.error('Error saving appointment:', error);
+      Alert.alert(
+        'Payment Successful but Appointment Failed',
+        'Your payment was successful but we encountered an issue saving your appointment. Please contact support.',
+        [
+          {
+            text: 'OK',
+            onPress: () => {
+              setModalVisible(false);
+              setPaymentLoading(false);
+            }
+          }
+        ]
+      );
+    }
+  };
+
+  // Modal handlers
+  const handleBookAppointment = (doctor) => {
+    setSelectedDoctor(doctor);
+    setModalVisible(true);
+    setSelectedDate(null);
+    setSelectedTime(null);
+  };
+
+  const handleDateSelect = (dayData) => {
+    if (dayData && !dayData.isPast) {
+      setSelectedDate(dayData);
+      setSelectedTime(null); // Reset time when date changes
+    }
+  };
+
+  const handleTimeSelect = (time) => {
+    setSelectedTime(time);
+  };
+
+  const handleConfirmBooking = () => {
+    if (selectedDate && selectedTime && selectedDoctor) {
+      handleRazorpayPayment();
+    }
   };
 
   // Get first photo from photos array
@@ -606,9 +891,8 @@ const AppointmentScreen = () => {
           <View style={styles.doctorImageContainer}>
             {firstPhoto ? (
               <Image 
-                source={{ uri: "https://static.vecteezy.com/system/resources/previews/026/375/249/non_2x/ai-generative-portrait-of-confident-male-doctor-in-white-coat-and-stethoscope-standing-with-arms-crossed-and-looking-at-camera-photo.jpg" }} 
+                source={{ uri: 'https://static.vecteezy.com/system/resources/previews/026/375/249/non_2x/ai-generative-portrait-of-confident-male-doctor-in-white-coat-and-stethoscope-standing-with-arms-crossed-and-looking-at-camera-photo.jpg' }} 
                 style={styles.doctorImage}
-               
               />
             ) : (
               <View style={styles.defaultImageContainer}>
@@ -654,9 +938,9 @@ const AppointmentScreen = () => {
           </View>
 
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>💰 Chat Price:</Text>
+            <Text style={styles.detailLabel}>💰 Appointment Price:</Text>
             <Text style={styles.priceText}>
-              ₹{item.chat_price}
+              ₹{parseFloat(item.chat_price).toFixed(2)} {/* Ensure display in rupees */}
             </Text>
           </View>
 
@@ -694,7 +978,10 @@ const AppointmentScreen = () => {
             <Text style={styles.actionButtonText}>✉️ Email</Text>
           </TouchableOpacity>
           
-          <TouchableOpacity style={[styles.actionButton, styles.primaryButton]}>
+          <TouchableOpacity 
+            style={[styles.actionButton, styles.primaryButton]}
+            onPress={() => handleBookAppointment(item)}
+          >
             <Text style={[styles.actionButtonText, styles.primaryButtonText]}>
               📅 Book Appointment
             </Text>
@@ -754,6 +1041,214 @@ const AppointmentScreen = () => {
           </View>
         }
       />
+
+      {/* Booking Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Book Appointment</Text>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => setModalVisible(false)}
+                disabled={paymentLoading}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Doctor Info */}
+            {selectedDoctor && (
+              <View style={styles.modalDoctorInfo}>
+                <Text style={styles.modalDoctorName}>
+                  {selectedDoctor.formatted_address ? selectedDoctor.formatted_address.split(',')[0] : 'Veterinary Clinic'}
+                </Text>
+                <Text style={styles.modalDoctorDetails}>
+                  {selectedDoctor.email} • ₹{parseFloat(selectedDoctor.chat_price).toFixed(2)} {/* Ensure display in rupees */}
+                </Text>
+              </View>
+            )}
+
+            <ScrollView style={styles.modalContent} showsVerticalScrollIndicator={false}>
+              {/* Calendar Section */}
+              <View style={styles.calendarSection}>
+                <FlatList
+                  ref={flatListRef}
+                  data={[0, 1, 2]}
+                  renderItem={({ item: index }) => {
+                    const monthOffset = index - 1;
+                    let displayMonth = currentMonth + monthOffset;
+                    let displayYear = currentYear;
+                    if (displayMonth < 0) {
+                      displayMonth += 12;
+                      displayYear -= 1;
+                    } else if (displayMonth >= 12) {
+                      displayMonth -= 12;
+                      displayYear += 1;
+                    }
+                    const monthName = new Date(displayYear, displayMonth, 1).toLocaleDateString('en-US', { month: 'long', year: 'numeric' });
+                    const days = generateCalendarDays(displayMonth, displayYear);
+                    return (
+                      <View style={{ width: windowWidth, paddingHorizontal: scale(20), alignItems: 'center' }}>
+                        <Text style={styles.sectionTitle}>{monthName}</Text>
+                        <View style={styles.weekDaysContainer}>
+                          {weekDays.map((day) => (
+                            <Text key={day} style={styles.weekDayText}>{day}</Text>
+                          ))}
+                        </View>
+                        <View style={styles.calendarGrid}>
+                          {days.map((dayData, idx) => (
+                            <TouchableOpacity
+                              key={idx}
+                              style={[
+                                styles.dayButton,
+                                (!dayData || dayData?.isPast) && styles.pastDay,
+                                dayData?.isToday && styles.today,
+                                selectedDate &&
+                                selectedDate.date.getDate() === dayData?.day &&
+                                selectedDate.date.getMonth() === displayMonth &&
+                                selectedDate.date.getFullYear() === displayYear &&
+                                styles.selectedDay,
+                              ]}
+                              onPress={() => handleDateSelect(dayData)}
+                              disabled={!dayData || dayData.isPast || paymentLoading}
+                            >
+                              {dayData && (
+                                <>
+                                  <Text
+                                    style={[
+                                      styles.dayText,
+                                      dayData.isPast && styles.pastDayText,
+                                      dayData.isToday && styles.todayText,
+                                      selectedDate &&
+                                      selectedDate.date.getDate() === dayData.day &&
+                                      selectedDate.date.getMonth() === displayMonth &&
+                                      selectedDate.date.getFullYear() === displayYear &&
+                                      styles.selectedDayText,
+                                    ]}
+                                  >
+                                    {dayData.day}
+                                  </Text>
+                                  <Text
+                                    style={[
+                                      styles.dayNameText,
+                                      dayData.isPast && styles.pastDayText,
+                                      selectedDate &&
+                                      selectedDate.date.getDate() === dayData.day &&
+                                      selectedDate.date.getMonth() === displayMonth &&
+                                      selectedDate.date.getFullYear() === displayYear &&
+                                      styles.selectedDayText,
+                                    ]}
+                                  >
+                                    {dayData.dayName}
+                                  </Text>
+                                </>
+                              )}
+                            </TouchableOpacity>
+                          ))}
+                        </View>
+                      </View>
+                    );
+                  }}
+                  horizontal={true}
+                  pagingEnabled={true}
+                  showsHorizontalScrollIndicator={false}
+                  initialScrollIndex={1}
+                  getItemLayout={(data, index) => ({
+                    length: windowWidth,
+                    offset: windowWidth * index,
+                    index,
+                  })}
+                  viewabilityConfig={{
+                    itemVisiblePercentThreshold: 50,
+                  }}
+                  onViewableItemsChanged={({ viewableItems }) => {
+                    if (viewableItems.length > 0) {
+                      const newIndex = viewableItems[0].index;
+                      if (newIndex !== 1) {
+                        const offset = newIndex - 1;
+                        setCurrentMonth((prevMonth) => {
+                          let newMonth = prevMonth + offset;
+                          let newYear = currentYear;
+                          while (newMonth < 0) {
+                            newMonth += 12;
+                            newYear -= 1;
+                          }
+                          while (newMonth >= 12) {
+                            newMonth -= 12;
+                            newYear += 1;
+                          }
+                          setCurrentYear(newYear);
+                          setTimeout(() => {
+                            flatListRef.current?.scrollToIndex({ index: 1, animated: false });
+                          }, 0);
+                          return newMonth;
+                        });
+                      }
+                    }
+                  }}
+                  keyExtractor={(item) => item.toString()}
+                  style={{ marginHorizontal: -scale(20) }}
+                />
+              </View>
+
+              {/* Time Selection */}
+              {selectedDate && (
+                <View style={styles.timeSection}>
+                  <Text style={styles.sectionTitle}>
+                    Available Times - {selectedDate.date.toDateString()}
+                  </Text>
+                  <View style={styles.timeSlotsContainer}>
+                    {timeSlots.map((time) => (
+                      <TouchableOpacity
+                        key={time}
+                        style={[
+                          styles.timeSlot,
+                          selectedTime === time && styles.selectedTimeSlot,
+                        ]}
+                        onPress={() => handleTimeSelect(time)}
+                        disabled={paymentLoading}
+                      >
+                        <Text style={[
+                          styles.timeSlotText,
+                          selectedTime === time && styles.selectedTimeSlotText,
+                        ]}>
+                          {time}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+              )}
+            </ScrollView>
+
+            {/* Book Button */}
+            {selectedDate && selectedTime && (
+              <View style={styles.bookButtonContainer}>
+                <TouchableOpacity
+                  style={[styles.bookButton, paymentLoading && styles.bookButtonDisabled]}
+                  onPress={handleConfirmBooking}
+                  disabled={paymentLoading}
+                >
+                  {paymentLoading ? (
+                    <ActivityIndicator size="small" color={colors.white} />
+                  ) : (
+                    <Text style={styles.bookButtonText}>
+                      Pay ₹{parseFloat(selectedDoctor?.chat_price).toFixed(2)} & Confirm Appointment {/* Ensure display in rupees */}
+                    </Text>
+                  )}
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -978,6 +1473,183 @@ const styles = ScaledSheet.create({
     fontSize: moderateScale(16),
     color: colors.textGray,
     textAlign: 'center',
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContainer: {
+    backgroundColor: colors.white,
+    height: height * 0.8,
+    borderTopLeftRadius: moderateScale(20),
+    borderTopRightRadius: moderateScale(20),
+    paddingTop: verticalScale(10),
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(15),
+    borderBottomWidth: 1,
+    borderBottomColor: colors.lightGray,
+  },
+  modalTitle: {
+    fontSize: moderateScale(20),
+    fontWeight: 'bold',
+    color: colors.darkGray,
+  },
+  closeButton: {
+    padding: scale(5),
+  },
+  closeButtonText: {
+    fontSize: moderateScale(20),
+    color: colors.textGray,
+    fontWeight: 'bold',
+  },
+  modalDoctorInfo: {
+    paddingHorizontal: scale(20),
+    paddingVertical: verticalScale(10),
+    backgroundColor: colors.lightGray,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.borderGray,
+  },
+  modalDoctorName: {
+    fontSize: moderateScale(16),
+    fontWeight: 'bold',
+    color: colors.darkGray,
+  },
+  modalDoctorDetails: {
+    fontSize: moderateScale(12),
+    color: colors.textGray,
+    marginTop: verticalScale(2),
+  },
+  modalContent: {
+    flex: 1,
+    paddingHorizontal: scale(20),
+  },
+  
+  // Calendar Styles
+  calendarSection: {
+    marginVertical: verticalScale(20),
+  },
+  sectionTitle: {
+    fontSize: moderateScale(18),
+    fontWeight: 'bold',
+    color: colors.darkGray,
+    marginBottom: verticalScale(15),
+    textAlign: 'center',
+  },
+  weekDaysContainer: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+    marginBottom: verticalScale(10),
+  },
+  weekDayText: {
+    fontSize: moderateScale(14),
+    fontWeight: '600',
+    color: colors.textGray,
+    textAlign: 'center',
+    flex: 1,
+  },
+  calendarGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+  },
+  dayButton: {
+    width: '14.28%',
+    aspectRatio: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginVertical: verticalScale(2),
+    borderRadius: moderateScale(8),
+  },
+  dayText: {
+    fontSize: moderateScale(16),
+    fontWeight: '600',
+    color: colors.darkGray,
+  },
+  dayNameText: {
+    fontSize: moderateScale(10),
+    color: colors.textGray,
+    marginTop: verticalScale(2),
+  },
+  pastDay: {
+    opacity: 0.3,
+  },
+  pastDayText: {
+    color: colors.textGray,
+  },
+  today: {
+    backgroundColor: '#E3F2FD',
+  },
+  todayText: {
+    color: colors.primary,
+    fontWeight: 'bold',
+  },
+  selectedDay: {
+    backgroundColor: colors.primary,
+  },
+  selectedDayText: {
+    color: colors.white,
+    fontWeight: 'bold',
+  },
+  
+  // Time Selection Styles
+  timeSection: {
+    marginBottom: verticalScale(20),
+  },
+  timeSlotsContainer: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: scale(10),
+  },
+  timeSlot: {
+    paddingHorizontal: scale(16),
+    paddingVertical: verticalScale(10),
+    borderRadius: moderateScale(20),
+    borderWidth: 1,
+    borderColor: colors.borderGray,
+    backgroundColor: colors.lightGray,
+    minWidth: '30%',
+    alignItems: 'center',
+  },
+  selectedTimeSlot: {
+    backgroundColor: colors.primary,
+    borderColor: colors.primary,
+  },
+  timeSlotText: {
+    fontSize: moderateScale(14),
+    color: colors.darkGray,
+  },
+  selectedTimeSlotText: {
+    color: colors.white,
+    fontWeight: '600',
+  },
+
+  // Book Button Styles
+  bookButtonContainer: {
+    padding: scale(20),
+    borderTopWidth: 1,
+    borderTopColor: colors.lightGray,
+  },
+  bookButton: {
+    backgroundColor: colors.primary,
+    paddingVertical: verticalScale(15),
+    borderRadius: moderateScale(10),
+    alignItems: 'center',
+  },
+  bookButtonDisabled: {
+    backgroundColor: colors.borderGray,
+  },
+  bookButtonText: {
+    color: colors.white,
+    fontSize: moderateScale(18),
+    fontWeight: 'bold',
   },
 });
 

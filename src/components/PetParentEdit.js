@@ -140,7 +140,7 @@ const PetParentEditScreen = ({ navigation }) => {
           {/* Avatar Section */}
           <View style={styles.avatarSection}>
             <View style={styles.avatarContainer}>
-              <Image source={{ uri: formData.avatar }} style={styles.avatar} />
+              <Image source={{ uri: formData?.avatar }} style={styles.avatar} />
               <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
                 <Text style={styles.changePhotoIcon}>📷</Text>
               </TouchableOpacity>
