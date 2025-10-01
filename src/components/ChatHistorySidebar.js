@@ -71,7 +71,6 @@ const ChatHistorySidebar = ({
   };
 
   // Start new chat
-<<<<<<< HEAD
 const handleNewChat = async () => {
   if (!user) return;
 
@@ -106,41 +105,6 @@ const handleNewChat = async () => {
     Alert.alert("Error", "Failed to start new chat");
   }
 };
-=======
-  const handleNewChat = async () => {
-    if (!user) return;
-
-    try {
-      const token = await AsyncStorage.getItem("token");
-      const response = await axios.get(
-        `https://snoutiq.com/backend/api/chat-rooms/new?user_id=${user.id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      const { chat_room_token } = response.data;
-
-      if (updateChatRoomToken) {
-        updateChatRoomToken(chat_room_token);
-      }
-
-      // Close sidebar
-      handleClose();
-
-      // Navigate to Chat with new token - this will trigger message loading
-      navigation.navigate("Chat", { 
-        chat_room_token,
-        isNewChat: true // Flag to indicate it's a new chat
-      });
-
-      // Refresh history
-      await fetchHistory();
-    } catch (error) {
-      console.error("Failed to create new chat:", error);
-      Alert.alert("Error", "Failed to start new chat");
-    }
-  };
-
->>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   // Delete chat
   const handleDeleteChat = async (chatId, chatRoomToken) => {
     Alert.alert("Delete Chat", "Are you sure you want to delete this chat?", [
@@ -191,13 +155,9 @@ const handleNewChat = async () => {
 //   };
 // ChatHistorySidebar में handleSelectChat function update करें
 const handleSelectChat = (chatRoomToken) => {
-<<<<<<< HEAD
   console.log("=== SELECTING CHAT ===");
   console.log("Selected chat room token:", chatRoomToken);
   console.log("Current chat room token:", currentChatRoomToken);
-=======
-  console.log("Selected chat room:", chatRoomToken);
->>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   
   if (updateChatRoomToken) {
     updateChatRoomToken(chatRoomToken);
@@ -205,7 +165,6 @@ const handleSelectChat = (chatRoomToken) => {
 
   handleClose();
   
-<<<<<<< HEAD
   // Use setTimeout to ensure navigation happens after modal closes
   setTimeout(() => {
     console.log("Navigating to Chat screen with token:", chatRoomToken);
@@ -216,14 +175,6 @@ const handleSelectChat = (chatRoomToken) => {
       timestamp: Date.now() // Force update
     });
   }, 350); // Increased delay slightly
-=======
-  // Navigate with the selected chat token
-  navigation.navigate("Chat", { 
-    chat_room_token: chatRoomToken,
-    loadHistory: true, 
-    isNewChat: false  
-  });
->>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 };
   // Format date
   const formatDate = (dateStr) => {
@@ -343,11 +294,7 @@ const handleSelectChat = (chatRoomToken) => {
       transparent
       animationType="none"
       onRequestClose={handleClose}
-<<<<<<< HEAD
         statusBarTranslucent={false} 
-=======
-      statusBarTranslucent
->>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
     >
       <View style={styles.modalContainer}>
         {/* Backdrop */}

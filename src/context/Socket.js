@@ -160,11 +160,7 @@ let socketUrl;
 
 if (__DEV__) {
   // For both Android and iOS in development, use the same IP
-<<<<<<< HEAD
   socketUrl = "http://10.98.222.171:4000";
-=======
-  socketUrl = "http://192.168.1.7:4000";
->>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 } else {
   socketUrl = "https://snoutiq.com";
 }
