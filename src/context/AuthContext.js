@@ -138,7 +138,11 @@
 // };
 
 
+<<<<<<< HEAD
 
+=======
+// src/context/AuthContext.js
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 import React, { createContext, useState, useEffect, useContext } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 

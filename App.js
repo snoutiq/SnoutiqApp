@@ -14,7 +14,10 @@ import AuthStack from './src/navigation/AuthStack';
 import { navigationRef } from './src/navigation/RootNavigation';
 import { GestureHandlerRootView } from "react-native-gesture-handler";
 import { SafeAreaProvider } from "react-native-safe-area-context";
+<<<<<<< HEAD
 import LoaderScreen from './src/components/LoaderScreen';
+=======
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 
 import { enableScreens } from 'react-native-screens';
 import { requestPermissionsWithRetry, checkCameraAudioPermissions } from './src/components/permissions';
@@ -27,7 +30,11 @@ const App = () => (
           <AuthProvider>
             <StatusBar
               barStyle="light-content"
+<<<<<<< HEAD
               backgroundColor="#816ee9ff"
+=======
+              backgroundColor="#2563EB"
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
             />
             <AppNav />
           </AuthProvider>
@@ -150,10 +157,23 @@ const AppNav = () => {
     return () => clearInterval(interval);
   }, [isLoggedIn, permissionStatus.granted]);
 
+<<<<<<< HEAD
 if (isLoading) {
   return <LoaderScreen />;
 }
 
+=======
+  if (isLoading) {
+    return (
+      <SafeAreaView
+        style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}
+        edges={['top', 'bottom', 'left', 'right']}
+      >
+        <ActivityIndicator size="large" color="#0000ff" />
+      </SafeAreaView>
+    );
+  }
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 
   return (
     <NavigationContainer

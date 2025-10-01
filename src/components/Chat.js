@@ -12,13 +12,20 @@ import {
   TouchableOpacity,
   StyleSheet,
   SafeAreaView,
+<<<<<<< HEAD
+=======
+  StatusBar,
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   Alert,
   Animated,
   Dimensions,
   Platform,
   ActivityIndicator,
   Keyboard,
+<<<<<<< HEAD
   KeyboardAvoidingView,
+=======
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { moderateScale, verticalScale } from "react-native-size-matters";
@@ -59,7 +66,10 @@ const Chat = ({ navigation, route }) => {
   const scrollViewRef = useRef(null);
   const typingTimeouts = useRef(new Map());
   const fadeAnim = useRef(new Animated.Value(0)).current;
+<<<<<<< HEAD
   const prevChatRoomToken = useRef(currentChatRoomToken);
+=======
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 
   // Keyboard listeners
   useEffect(() => {
@@ -116,6 +126,7 @@ const Chat = ({ navigation, route }) => {
     }
   }, [token, user?.id, updateNearbyDoctors]);
 
+<<<<<<< HEAD
   const loadChatHistory = useCallback(async (roomToken) => {
     if (!roomToken || !user?.id || !token) {
       console.log("Missing required parameters for loading chat history");
@@ -226,18 +237,142 @@ const Chat = ({ navigation, route }) => {
     }
   }, [currentChatRoomToken, route.params?.timestamp]);
 
+=======
+ 
+const loadChatHistory = useCallback(async (roomToken) => {
+  if (!roomToken || !user?.id || !token) {
+    console.log("Missing required parameters for loading chat history");
+    return;
+  }
+
+  setIsLoading(true);
+  try {
+    const response = await axios.get(
+      `https://snoutiq.com/backend/api/chat-rooms/${roomToken}/chats?user_id=${user.id}`,
+      { 
+        headers: { Authorization: `Bearer ${token}` },
+        timeout: 10000
+      }
+    );
+
+    console.log("Full API response:", JSON.stringify(response.data, null, 2));
+
+    const messages = [];
+    
+    if (response.data && Array.isArray(response.data.chats)) {
+      response.data.chats.forEach((chat) => {
+        // Add user question as message
+        if (chat.question && chat.question.trim() !== "") {
+          messages.push({
+            id: `user-${chat.id}`,
+            text: chat.question,
+            sender: "user",
+            timestamp: new Date(chat.created_at),
+            displayedText: chat.question,
+          });
+        }
+
+        // Add AI answer as message
+        if (chat.answer && chat.answer.trim() !== "") {
+          messages.push({
+            id: `ai-${chat.id}`,
+            text: chat.answer,
+            sender: "ai",
+            timestamp: new Date(chat.created_at),
+            displayedText: chat.answer,
+            decision: chat.diagnosis,
+            emergency_status: chat.emergency_status,
+          });
+        }
+      });
+
+      // Sort messages by timestamp
+      messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
+      
+      console.log("Final sorted messages:", messages);
+      setMessages(messages);
+
+      // Set context token from the first available chat
+      const firstChatWithToken = response.data.chats.find(chat => chat.context_token);
+      if (firstChatWithToken) {
+        setContextToken(firstChatWithToken.context_token);
+      }
+    } else {
+      console.log("No chats found in response");
+      setMessages([]);
+    }
+
+    // Scroll to bottom
+    setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: true });
+    }, 300);
+
+  } catch (error) {
+    console.error("Failed to load chat history:", error);
+    // Error handling remains the same...
+  } finally {
+    setIsLoading(false);
+  }
+}, [user?.id, token]);
+
+
+useEffect(() => {
+  console.log("Chat room token changed:", currentChatRoomToken);
+  console.log("Route params:", route.params);
+
+  if (!currentChatRoomToken) {
+    console.log("No chat room token available");
+    setMessages([]);
+    return;
+  }
+
+  // Update context if needed
+  if (updateChatRoomToken && currentChatRoomToken !== chatRoomToken) {
+    updateChatRoomToken(currentChatRoomToken);
+  }
+
+  // Determine if we should load history
+  const shouldLoadHistory = route.params?.loadHistory !== false;
+  const isNewChat = route.params?.isNewChat === true;
+
+  console.log("shouldLoadHistory:", shouldLoadHistory, "isNewChat:", isNewChat);
+
+  if (isNewChat) {
+    // Clear messages for new chat
+    console.log("Starting new chat - clearing messages");
+    setMessages([]);
+    setContextToken("");
+  } else if (shouldLoadHistory) {
+    // Load existing chat history
+    console.log("Loading chat history for room:", currentChatRoomToken);
+    loadChatHistory(currentChatRoomToken);
+  } else {
+    console.log("Skipping history load due to route params");
+  }
+}, [currentChatRoomToken, route.params?.loadHistory, route.params?.isNewChat]);
+
+  // Auto-scroll to bottom
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   const scrollToBottom = useCallback(() => {
     setTimeout(() => {
       scrollViewRef.current?.scrollToEnd({ animated: true });
     }, 100);
   }, []);
 
+<<<<<<< HEAD
+=======
+  // Auto-scroll when keyboard opens
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   useEffect(() => {
     if (isKeyboardVisible) {
       scrollToBottom();
     }
   }, [isKeyboardVisible, scrollToBottom]);
 
+<<<<<<< HEAD
+=======
+  // Cleanup typing animation
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   const cleanupTypingAnimation = useCallback((messageId) => {
     if (typingTimeouts.current.has(messageId)) {
       clearTimeout(typingTimeouts.current.get(messageId));
@@ -245,6 +380,10 @@ const Chat = ({ navigation, route }) => {
     }
   }, []);
 
+<<<<<<< HEAD
+=======
+  // Start typing animation
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   const startTypingAnimation = useCallback(
     (messageId, fullText) => {
       cleanupTypingAnimation(messageId);
@@ -283,6 +422,10 @@ const Chat = ({ navigation, route }) => {
     [cleanupTypingAnimation, scrollToBottom]
   );
 
+<<<<<<< HEAD
+=======
+  // Send message
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   const handleSendMessage = useCallback(
     async (inputMessage) => {
       if (inputMessage.trim() === "" || sending) return;
@@ -393,6 +536,10 @@ const Chat = ({ navigation, route }) => {
     ]
   );
 
+<<<<<<< HEAD
+=======
+  // Clear chat
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   const clearChat = useCallback(() => {
     Alert.alert(
       "Clear Chat",
@@ -413,6 +560,10 @@ const Chat = ({ navigation, route }) => {
     );
   }, []);
 
+<<<<<<< HEAD
+=======
+  // Handle feedback
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   const handleFeedback = useCallback(
     async (feedback, timestamp) => {
       try {
@@ -435,6 +586,10 @@ const Chat = ({ navigation, route }) => {
     [messages]
   );
 
+<<<<<<< HEAD
+=======
+  // Fetch nearby doctors on mount
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   useEffect(() => {
     if (!token || !user?.id) return;
 
@@ -443,11 +598,20 @@ const Chat = ({ navigation, route }) => {
     };
 
     fetchData();
+<<<<<<< HEAD
     const interval = setInterval(fetchData, 5 * 60 * 1000);
+=======
+
+    const interval = setInterval(fetchData, 5 * 60 * 1000); // 5 mins
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 
     return () => clearInterval(interval);
   }, [token, user?.id, fetchNearbyDoctors]);
 
+<<<<<<< HEAD
+=======
+  // Fade in animation
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   useEffect(() => {
     Animated.timing(fadeAnim, {
       toValue: 1,
@@ -456,6 +620,10 @@ const Chat = ({ navigation, route }) => {
     }).start();
   }, []);
 
+<<<<<<< HEAD
+=======
+  // Render loading state
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   if (isLoading && messages.length === 0) {
     return (
       <View style={styles.loadingContainer}>
@@ -467,8 +635,17 @@ const Chat = ({ navigation, route }) => {
 
   return (
     <SafeAreaView style={styles.container}>
+<<<<<<< HEAD
       <LinearGradient colors={["#7C3AED", "#EC4899"]} style={styles.header}>
         <View style={styles.headerContent}>
+=======
+      <StatusBar barStyle="light-content" backgroundColor="#4F46E5" />
+
+      {/* Header */}
+      <LinearGradient colors={["#4F46E5", "#7C3AED"]} style={styles.header}>
+        <View style={styles.headerContent}>
+          {/* Left side - History Button + Title */}
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
           <View style={styles.headerLeft}>
             <ChatHistoryButton 
               navigation={navigation}
@@ -494,6 +671,7 @@ const Chat = ({ navigation, route }) => {
         </View>
       </LinearGradient>
 
+<<<<<<< HEAD
       <KeyboardAvoidingView 
         style={{ flex: 1 }} 
         behavior={Platform.OS === "ios" ? "padding" : undefined}
@@ -549,6 +727,63 @@ const Chat = ({ navigation, route }) => {
           </View>
         </View>
       </KeyboardAvoidingView>
+=======
+      {/* Main Content with Keyboard Handling */}
+      <View style={styles.contentContainer}>
+        {/* Messages Area */}
+        <Animated.View style={[styles.messagesContainer, { opacity: fadeAnim }]}>
+          <ScrollView
+            ref={scrollViewRef}
+            style={styles.scrollView}
+            contentContainerStyle={styles.messagesContent}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {messages.length === 0 ? (
+              <View style={styles.emptyState}>
+                <View style={styles.emptyStateCard}>
+                  <LinearGradient
+                    colors={['#EBF4FF', '#DBEAFE']}
+                    style={styles.emptyStateIcon}
+                  >
+                    <Ionicons name="chatbubbles-outline" size={32} color="#3B82F6" />
+                  </LinearGradient>
+                  <Text style={styles.emptyStateTitle}>Start a Conversation</Text>
+                  <Text style={styles.emptyStateSubtitle}>
+                    Ask questions about your pet's health, behavior, nutrition, or any concerns you might have.
+                  </Text>
+                  <View style={styles.suggestionBox}>
+                    <Text style={styles.suggestionTitle}>Try asking:</Text>
+                    <Text style={styles.suggestionText}>• "My dog is vomiting, what should I do?"</Text>
+                    <Text style={styles.suggestionText}>• "What vaccines does my kitten need?"</Text>
+                    <Text style={styles.suggestionText}>• "Is this behavior normal for my pet?"</Text>
+                  </View>
+                </View>
+              </View>
+            ) : (
+              messages.map((msg, index) => (
+                <MessageBubble
+                  key={msg.id || `msg-${index}`}
+                  msg={msg}
+                  index={index}
+                  onFeedback={handleFeedback}
+                  nearbyDoctors={nearbyDoctors}
+                  navigation={navigation}
+                />
+              ))
+            )}
+          </ScrollView>
+        </Animated.View>
+
+        {/* Chat Input - Fixed at bottom */}
+        <View style={[
+          styles.inputWrapper,
+          isKeyboardVisible && { marginBottom: keyboardHeight }
+        ]}>
+          <ChatInput onSendMessage={handleSendMessage} isLoading={sending} />
+        </View>
+      </View>
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 
       <PetDetailsModal
         visible={showPetModal}
@@ -561,6 +796,10 @@ const Chat = ({ navigation, route }) => {
   );
 };
 
+<<<<<<< HEAD
+=======
+// Your existing styles remain the same...
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 const styles = StyleSheet.create({
   headerContent: {
     flexDirection: "row",
@@ -624,7 +863,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: moderateScale(16),
     paddingTop: verticalScale(16),
+<<<<<<< HEAD
     paddingBottom: verticalScale(120), // INCREASED FOR TAB BAR + INPUT
+=======
+    paddingBottom: verticalScale(8),
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
   },
   emptyState: {
     flex: 1,

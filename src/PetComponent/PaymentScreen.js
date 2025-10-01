@@ -937,6 +937,7 @@
 // });
 
 // export default PaymentScreen;
+<<<<<<< HEAD
 import { Ionicons } from "@expo/vector-icons";
 import axios from "axios";
 import { useContext, useEffect, useState } from "react";
@@ -949,10 +950,27 @@ import {
   Text,
   TouchableOpacity,
   View,
+=======
+import React, { useState, useEffect, useContext } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  TouchableOpacity,
+  ActivityIndicator,
+  Image,
+  StyleSheet,
+  Alert,
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 } from "react-native";
 import RazorpayCheckout from "react-native-razorpay";
 import { AuthContext } from "../context/AuthContext";
 import { socket } from "../context/Socket";
+<<<<<<< HEAD
+=======
+import axios from "axios";
+import { Ionicons } from "@expo/vector-icons";
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 
 const EnhancedPaymentScreen = ({ route, navigation }) => {
   const { doctor, channel, patientId, callId } = route.params;

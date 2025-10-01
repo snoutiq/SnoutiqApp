@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // import { createNativeStackNavigator } from '@react-navigation/native-stack';
 // import LoginScreen from '../auth/LoginScreen';
 // import EditPetProfile from '../components/EditPetProfile';
@@ -21,11 +22,17 @@
 
 // export default MainStack;
 
+=======
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 import React, { useState, useEffect } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as SplashScreen from "expo-splash-screen";
 
 import MainTabNavigator from "./BottomTabs";
+<<<<<<< HEAD
+=======
+import LoginScreen from "../auth/LoginScreen";
+>>>>>>> fdb97ac69712ac6dd31d59a4c4ffb6804fec3982
 import EditPetProfile from "../components/EditPetProfile";
 import PetParentEdit from "../components/PetParentEdit";
 import SettingsScreen from "../components/SettingsScreen";
