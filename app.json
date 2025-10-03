@@ -31,9 +31,9 @@
         "NSMicrophoneUsageDescription": "This app needs microphone access for video calls."
       }
     },
-    "icon": "../src/assets/favicon-512.webp",
+    "icon": "src/assets/favicon-512.webp",
     "splash": {
-      "image": "../src/assets/favicon-512.webp",
+      "image": "src/assets/favicon-512.webp",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     }

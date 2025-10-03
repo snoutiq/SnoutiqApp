@@ -264,7 +264,7 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
           />
           
           {/* Attachment Button */}
-          <TouchableOpacity
+          {/* <TouchableOpacity
             style={styles.attachButton}
             onPress={() => {
               // Handle attachment functionality
@@ -277,7 +277,7 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
               size={22} 
               color={isLoading ? '#D1D5DB' : '#6B7280'} 
             />
-          </TouchableOpacity>
+          </TouchableOpacity> */}
         </View>
 
         {/* Send Button */}
