@@ -61,10 +61,6 @@ const ChatHistoryButton = ({ navigation, currentChatRoomToken }) => {
         >
           <View style={styles.iconContainer}>
             <Ionicons name="time-outline" size={20} color="#FFFFFF" />
-            {/* Optional: Badge for unread count */}
-            {/* <View style={styles.badge}>
-              <Text style={styles.badgeText}>3</Text>
-            </View> */}
           </View>
         </TouchableOpacity>
       </Animated.View>

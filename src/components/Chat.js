@@ -45,16 +45,90 @@ const Chat = ({ navigation, route }) => {
     updateChatRoomToken,
     updateNearbyDoctors,
   } = useContext(AuthContext);
-  
+
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([]);
   const [sending, setSending] = useState(false);
   const [contextToken, setContextToken] = useState("");
   const [nearbyDoctors, setNearbyDoctors] = useState([]);
-  
+
   // Get current chat room token from route params or context
   const currentChatRoomToken = route.params?.chat_room_token || chatRoomToken;
-  
+
+useEffect(() => {
+  if (route.params?.initialMessage && route.params?.isNewChat) {
+    console.log("Auto-sending initial message:", route.params.initialMessage);
+
+    // Wait for component to be ready, then send the message
+    const timer = setTimeout(() => {
+      handleSendMessage(route.params.initialMessage);
+      // Clear the params to prevent re-sending
+      navigation.setParams({ initialMessage: null, isNewChat: false });
+    }, 500);
+
+    return () => clearTimeout(timer);
+  }
+}, [route.params?.initialMessage, route.params?.isNewChat]);
+
+
+// ==================== CHAT HISTORY LOADING ====================
+// Update the chat history loading useEffect in Chat component:
+
+useEffect(() => {
+  console.log("Chat room token changed:", currentChatRoomToken);
+  console.log("Route params:", route.params);
+
+  // If there's an initial message to send, skip loading history
+  if (route.params?.initialMessage && route.params?.isNewChat) {
+    console.log("Has initial message, skipping history load");
+    if (updateChatRoomToken && currentChatRoomToken !== chatRoomToken) {
+      updateChatRoomToken(currentChatRoomToken);
+    }
+    return;
+  }
+
+  // Only proceed if token actually changed
+  if (
+    prevChatRoomToken.current === currentChatRoomToken &&
+    !route.params?.timestamp
+  ) {
+    console.log("Token hasn't changed, skipping load");
+    return;
+  }
+
+  prevChatRoomToken.current = currentChatRoomToken;
+
+  if (!currentChatRoomToken) {
+    console.log("No chat room token available");
+    setMessages([]);
+    return;
+  }
+
+  if (updateChatRoomToken && currentChatRoomToken !== chatRoomToken) {
+    updateChatRoomToken(currentChatRoomToken);
+  }
+
+  const shouldLoadHistory = route.params?.loadHistory !== false;
+  const isNewChat = route.params?.isNewChat === true;
+
+  console.log(
+    "shouldLoadHistory:",
+    shouldLoadHistory,
+    "isNewChat:",
+    isNewChat
+  );
+
+  if (isNewChat) {
+    console.log("Starting new chat - clearing messages");
+    setMessages([]);
+    setContextToken("");
+  } else if (shouldLoadHistory) {
+    console.log("Loading chat history for room:", currentChatRoomToken);
+    loadChatHistory(currentChatRoomToken);
+  } else {
+    console.log("Skipping history load due to route params");
+  }
+}, [currentChatRoomToken, route.params?.timestamp]);
   // Refs
   const scrollViewRef = useRef(null);
   const typingTimeouts = useRef(new Map());
@@ -64,7 +138,7 @@ const Chat = ({ navigation, route }) => {
   // Keyboard listeners
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillShow' : 'keyboardDidShow',
+      Platform.OS === "ios" ? "keyboardWillShow" : "keyboardDidShow",
       (e) => {
         setIsKeyboardVisible(true);
         setKeyboardHeight(e.endCoordinates.height);
@@ -72,7 +146,7 @@ const Chat = ({ navigation, route }) => {
     );
 
     const keyboardDidHideListener = Keyboard.addListener(
-      Platform.OS === 'ios' ? 'keyboardWillHide' : 'keyboardDidHide',
+      Platform.OS === "ios" ? "keyboardWillHide" : "keyboardDidHide",
       () => {
         setIsKeyboardVisible(false);
         setKeyboardHeight(0);
@@ -116,75 +190,84 @@ const Chat = ({ navigation, route }) => {
     }
   }, [token, user?.id, updateNearbyDoctors]);
 
-  const loadChatHistory = useCallback(async (roomToken) => {
-    if (!roomToken || !user?.id || !token) {
-      console.log("Missing required parameters for loading chat history");
-      return;
-    }
-
-    setIsLoading(true);
-    try {
-      const response = await axios.get(
-        `https://snoutiq.com/backend/api/chat-rooms/${roomToken}/chats?user_id=${user.id}`,
-        { 
-          headers: { Authorization: `Bearer ${token}` },
-          timeout: 10000
-        }
-      );
-
-      console.log("Full API response:", JSON.stringify(response.data, null, 2));
-
-      const messages = [];
-      
-      if (response.data && Array.isArray(response.data.chats)) {
-        response.data.chats.forEach((chat) => {
-          if (chat.question && chat.question.trim() !== "") {
-            messages.push({
-              id: `user-${chat.id}`,
-              text: chat.question,
-              sender: "user",
-              timestamp: new Date(chat.created_at),
-              displayedText: chat.question,
-            });
-          }
-
-          if (chat.answer && chat.answer.trim() !== "") {
-            messages.push({
-              id: `ai-${chat.id}`,
-              text: chat.answer,
-              sender: "ai",
-              timestamp: new Date(chat.created_at),
-              displayedText: chat.answer,
-              decision: chat.diagnosis,
-              emergency_status: chat.emergency_status,
-            });
-          }
-        });
-
-        messages.sort((a, b) => new Date(a.timestamp) - new Date(b.timestamp));
-        
-        console.log("Final sorted messages:", messages);
-        setMessages(messages);
-
-        const firstChatWithToken = response.data.chats.find(chat => chat.context_token);
-        if (firstChatWithToken) {
-          setContextToken(firstChatWithToken.context_token);
-        }
-      } else {
-        console.log("No chats found in response");
-        setMessages([]);
+  const loadChatHistory = useCallback(
+    async (roomToken) => {
+      if (!roomToken || !user?.id || !token) {
+        console.log("Missing required parameters for loading chat history");
+        return;
       }
 
-      setTimeout(() => {
-        scrollViewRef.current?.scrollToEnd({ animated: true });
-      }, 300);
+      setIsLoading(true);
+      try {
+        const response = await axios.get(
+          `https://snoutiq.com/backend/api/chat-rooms/${roomToken}/chats?user_id=${user.id}`,
+          {
+            headers: { Authorization: `Bearer ${token}` },
+            timeout: 10000,
+          }
+        );
 
-    } catch (error) {
-      console.error("Failed to load chat history:", error);
-    } finally {
-      setIsLoading(false);
-    }
-  }, [user?.id, token]);
+        console.log(
+          "Full API response:",
+          JSON.stringify(response.data, null, 2)
+        );
+
+        const messages = [];
+
+        if (response.data && Array.isArray(response.data.chats)) {
+          response.data.chats.forEach((chat) => {
+            if (chat.question && chat.question.trim() !== "") {
+              messages.push({
+                id: `user-${chat.id}`,
+                text: chat.question,
+                sender: "user",
+                timestamp: new Date(chat.created_at),
+                displayedText: chat.question,
+              });
+            }
+
+            if (chat.answer && chat.answer.trim() !== "") {
+              messages.push({
+                id: `ai-${chat.id}`,
+                text: chat.answer,
+                sender: "ai",
+                timestamp: new Date(chat.created_at),
+                displayedText: chat.answer,
+                decision: chat.diagnosis,
+                emergency_status: chat.emergency_status,
+              });
+            }
+          });
+
+          messages.sort(
+            (a, b) => new Date(a.timestamp) - new Date(b.timestamp)
+          );
+
+          console.log("Final sorted messages:", messages);
+          setMessages(messages);
+
+          const firstChatWithToken = response.data.chats.find(
+            (chat) => chat.context_token
+          );
+          if (firstChatWithToken) {
+            setContextToken(firstChatWithToken.context_token);
+          }
+        } else {
+          console.log("No chats found in response");
+          setMessages([]);
+        }
+
+        setTimeout(() => {
+          scrollViewRef.current?.scrollToEnd({ animated: true });
+        }, 300);
+      } catch (error) {
+        console.error("Failed to load chat history:", error);
+      } finally {
+        setIsLoading(false);
+      }
+    },
+    [user?.id, token]
+  );
 
   // Load chat history when token changes
   useEffect(() => {
@@ -192,7 +275,10 @@ const Chat = ({ navigation, route }) => {
     console.log("Route params:", route.params);
 
     // Only proceed if token actually changed
-    if (prevChatRoomToken.current === currentChatRoomToken && !route.params?.timestamp) {
+    if (
+      prevChatRoomToken.current === currentChatRoomToken &&
+      !route.params?.timestamp
+    ) {
       console.log("Token hasn't changed, skipping load");
       return;
     }
@@ -212,7 +298,12 @@ const Chat = ({ navigation, route }) => {
     const shouldLoadHistory = route.params?.loadHistory !== false;
     const isNewChat = route.params?.isNewChat === true;
 
-    console.log("shouldLoadHistory:", shouldLoadHistory, "isNewChat:", isNewChat);
+    console.log(
+      "shouldLoadHistory:",
+      shouldLoadHistory,
+      "isNewChat:",
+      isNewChat
+    );
 
     if (isNewChat) {
       console.log("Starting new chat - clearing messages");
@@ -283,116 +374,233 @@ const Chat = ({ navigation, route }) => {
     [cleanupTypingAnimation, scrollToBottom]
   );
 
+  // const handleSendMessage = useCallback(
+  //   async (inputMessage) => {
+  //     if (inputMessage.trim() === "" || sending) return;
+
+  //     setSending(true);
+
+  //     const userMsgId = genId();
+  //     const loaderId = "__loader__";
+
+  //     const userMessage = {
+  //       id: userMsgId,
+  //       text: inputMessage,
+  //       sender: "user",
+  //       timestamp: new Date(),
+  //     };
+
+  //     const loaderMessage = {
+  //       id: loaderId,
+  //       type: "loading",
+  //       sender: "ai",
+  //       text: "",
+  //       timestamp: new Date(),
+  //     };
+
+  //     setMessages((prev) => [...prev, userMessage, loaderMessage]);
+  //     scrollToBottom();
+
+  //     try {
+  //       const petData = {
+  //         pet_name: user?.pet_name || "Unknown",
+  //         pet_breed: "Unknown Breed",
+  //         pet_age: user?.pet_age?.toString() || "Unknown",
+  //         pet_location: "Unknown Location",
+  //       };
+
+  //       const payload = {
+  //         user_id: user.id,
+  //         question: inputMessage,
+  //         context_token: contextToken || "",
+  //         chat_room_token: currentChatRoomToken || "",
+  //         ...petData,
+  //       };
+
+  //       const response = await axios.post(
+  //         "https://snoutiq.com/backend/api/chat/send",
+  //         payload,
+  //         {
+  //           headers: { Authorization: `Bearer ${token}` },
+  //           timeout: 30000,
+  //         }
+  //       );
+
+  //       const {
+  //         context_token: newCtx,
+  //         chat = {},
+  //         decision,
+  //       } = response.data || {};
+
+  //       if (newCtx) setContextToken(newCtx);
+
+  //       const fullText = String(chat.answer || "");
+  //       const aiId = genId();
+
+  //       setMessages((prev) =>
+  //         prev.map((m) =>
+  //           m.id === loaderId
+  //             ? {
+  //                 id: aiId,
+  //                 sender: "ai",
+  //                 text: fullText,
+  //                 displayedText: "",
+  //                 timestamp: new Date(),
+  //                 decision: decision,
+  //               }
+  //             : m
+  //         )
+  //       );
+
+  //       startTypingAnimation(aiId, fullText);
+  //     } catch (error) {
+  //       console.error("Error sending chat:", error);
+  //       Alert.alert("Error", "Something went wrong. Try again.");
+
+  //       setMessages((prev) => {
+  //         const filteredMessages = prev.filter((m) => m.id !== loaderId);
+  //         const errorMessage = {
+  //           id: genId(),
+  //           text: "⚠️ Sorry, I'm having trouble connecting right now.",
+  //           sender: "ai",
+  //           timestamp: new Date(),
+  //           isError: true,
+  //           displayedText: "⚠️ Sorry, I'm having trouble connecting right now.",
+  //         };
+  //         return [...filteredMessages, errorMessage];
+  //       });
+  //     } finally {
+  //       setSending(false);
+  //     }
+  //   },
+  //   [
+  //     sending,
+  //     user,
+  //     contextToken,
+  //     currentChatRoomToken,
+  //     token,
+  //     startTypingAnimation,
+  //     scrollToBottom,
+  //   ]
+  // );
+
+
   const handleSendMessage = useCallback(
-    async (inputMessage) => {
-      if (inputMessage.trim() === "" || sending) return;
+  async (inputMessage) => {
+    if (inputMessage.trim() === "" || sending) return;
 
-      setSending(true);
+    setSending(true);
 
-      const userMsgId = genId();
-      const loaderId = "__loader__";
+    const userMsgId = genId();
+    const loaderId = "__loader__";
 
-      const userMessage = {
-        id: userMsgId,
-        text: inputMessage,
-        sender: "user",
-        timestamp: new Date(),
+    const userMessage = {
+      id: userMsgId,
+      text: inputMessage,
+      sender: "user",
+      timestamp: new Date(),
+      displayedText: inputMessage,
+    };
+
+    const loaderMessage = {
+      id: loaderId,
+      type: "loading",
+      sender: "ai",
+      text: "",
+      timestamp: new Date(),
+    };
+
+    setMessages((prev) => [...prev, userMessage, loaderMessage]);
+    scrollToBottom();
+
+    try {
+      const petData = {
+        pet_name: user?.pet_name || "Unknown",
+        pet_breed: user?.breed || "Unknown Breed",
+        pet_age: user?.pet_age?.toString() || "Unknown",
+        pet_location: "Unknown Location",
       };
 
-      const loaderMessage = {
-        id: loaderId,
-        type: "loading",
-        sender: "ai",
-        text: "",
-        timestamp: new Date(),
+      const payload = {
+        user_id: user.id,
+        question: inputMessage,
+        context_token: contextToken || "",
+        chat_room_token: currentChatRoomToken || "",
+        ...petData,
       };
 
-      setMessages((prev) => [...prev, userMessage, loaderMessage]);
-      scrollToBottom();
+      console.log("Sending payload:", payload);
 
-      try {
-        const petData = {
-          pet_name: user?.pet_name || "Unknown",
-          pet_breed: "Unknown Breed",
-          pet_age: user?.pet_age?.toString() || "Unknown",
-          pet_location: "Unknown Location",
+      const response = await axios.post(
+        "https://snoutiq.com/backend/api/chat/send",
+        payload,
+        {
+          headers: { Authorization: `Bearer ${token}` },
+          timeout: 30000,
+        }
+      );
+
+      console.log("API response:", response.data);
+
+      const {
+        context_token: newCtx,
+        chat = {},
+        decision,
+        emergency_status,
+      } = response.data || {};
+
+      if (newCtx) setContextToken(newCtx);
+
+      const fullText = String(chat.answer || "");
+      const aiId = genId();
+
+      setMessages((prev) =>
+        prev.map((m) =>
+          m.id === loaderId
+            ? {
+                id: aiId,
+                sender: "ai",
+                text: fullText,
+                displayedText: "",
+                timestamp: new Date(),
+                decision,
+                emergency_status,
+              }
+            : m
+        )
+      );
+
+      startTypingAnimation(aiId, fullText);
+    } catch (error) {
+      console.error("Error sending chat:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.");
+
+      setMessages((prev) => {
+        const filteredMessages = prev.filter((m) => m.id !== loaderId);
+        const errorMessage = {
+          id: genId(),
+          text: "⚠️ Sorry, I'm having trouble connecting right now.",
+          sender: "ai",
+          timestamp: new Date(),
+          isError: true,
+          displayedText: "⚠️ Sorry, I'm having trouble connecting right now.",
         };
-
-        const payload = {
-          user_id: user.id,
-          question: inputMessage,
-          context_token: contextToken || "",
-          chat_room_token: currentChatRoomToken || "",
-          ...petData,
-        };
-
-        const response = await axios.post(
-          "https://snoutiq.com/backend/api/chat/send",
-          payload,
-          {
-            headers: { Authorization: `Bearer ${token}` },
-            timeout: 30000,
-          }
-        );
-
-        const {
-          context_token: newCtx,
-          chat = {},
-          decision,
-        } = response.data || {};
-
-        if (newCtx) setContextToken(newCtx);
-
-        const fullText = String(chat.answer || "");
-        const aiId = genId();
-
-        setMessages((prev) =>
-          prev.map((m) =>
-            m.id === loaderId
-              ? {
-                  id: aiId,
-                  sender: "ai",
-                  text: fullText,
-                  displayedText: "",
-                  timestamp: new Date(),
-                  decision: decision,
-                }
-              : m
-          )
-        );
-
-        startTypingAnimation(aiId, fullText);
-      } catch (error) {
-        console.error("Error sending chat:", error);
-        Alert.alert("Error", "Something went wrong. Try again.");
-
-        setMessages((prev) => {
-          const filteredMessages = prev.filter((m) => m.id !== loaderId);
-          const errorMessage = {
-            id: genId(),
-            text: "⚠️ Sorry, I'm having trouble connecting right now.",
-            sender: "ai",
-            timestamp: new Date(),
-            isError: true,
-            displayedText: "⚠️ Sorry, I'm having trouble connecting right now.",
-          };
-          return [...filteredMessages, errorMessage];
-        });
-      } finally {
-        setSending(false);
-      }
-    },
-    [
-      sending,
-      user,
-      contextToken,
-      currentChatRoomToken,
-      token,
-      startTypingAnimation,
-      scrollToBottom,
-    ]
-  );
-
+        return [...filteredMessages, errorMessage];
+      });
+    } finally {
+      setSending(false);
+    }
+  },
+  [
+    sending,
+    user,
+    contextToken,
+    currentChatRoomToken,
+    token,
+    startTypingAnimation,
+    scrollToBottom,
+  ]
+);
   const clearChat = useCallback(() => {
     Alert.alert(
       "Clear Chat",
@@ -470,7 +678,7 @@ const Chat = ({ navigation, route }) => {
       <LinearGradient colors={["#7C3AED", "#EC4899"]} style={styles.header}>
         <View style={styles.headerContent}>
           <View style={styles.headerLeft}>
-            <ChatHistoryButton 
+            <ChatHistoryButton
               navigation={navigation}
               currentChatRoomToken={currentChatRoomToken}
             />
@@ -481,7 +689,7 @@ const Chat = ({ navigation, route }) => {
               </Text>
             </View>
           </View>
-          
+
           {messages.length > 0 && (
             <TouchableOpacity
               style={styles.clearButton}
@@ -494,58 +702,84 @@ const Chat = ({ navigation, route }) => {
         </View>
       </LinearGradient>
 
-      <KeyboardAvoidingView 
-        style={{ flex: 1 }} 
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
         behavior={Platform.OS === "ios" ? "padding" : undefined}
         keyboardVerticalOffset={0}
       >
         <View style={styles.contentContainer}>
-          <Animated.View style={[styles.messagesContainer, { opacity: fadeAnim }]}>
-            <ScrollView
-              ref={scrollViewRef}
-              style={styles.scrollView}
-              contentContainerStyle={styles.messagesContent}
-              keyboardShouldPersistTaps="handled"
-              showsVerticalScrollIndicator={false}
+          <View style={styles.contentContainer}>
+            {isLoading && messages.length === 0 && (
+              <View style={styles.loadingOverlay}>
+                <ActivityIndicator size="large" color="#4F46E5" />
+              </View>
+            )}
+
+            <Animated.View
+              style={[styles.messagesContainer, { opacity: fadeAnim }]}
             >
-              {messages.length === 0 ? (
-                <View style={styles.emptyState}>
-                  <View style={styles.emptyStateCard}>
-                    <LinearGradient
-                      colors={['#EBF4FF', '#DBEAFE']}
-                      style={styles.emptyStateIcon}
-                    >
-                      <Ionicons name="chatbubbles-outline" size={32} color="#3B82F6" />
-                    </LinearGradient>
-                    <Text style={styles.emptyStateTitle}>Start a Conversation</Text>
-                    <Text style={styles.emptyStateSubtitle}>
-                      Ask questions about your pet's health, behavior, nutrition, or any concerns you might have.
-                    </Text>
-                    <View style={styles.suggestionBox}>
-                      <Text style={styles.suggestionTitle}>Try asking:</Text>
-                      <Text style={styles.suggestionText}>• "My dog is vomiting, what should I do?"</Text>
-                      <Text style={styles.suggestionText}>• "What vaccines does my kitten need?"</Text>
-                      <Text style={styles.suggestionText}>• "Is this behavior normal for my pet?"</Text>
+              <ScrollView
+                ref={scrollViewRef}
+                style={styles.scrollView}
+                contentContainerStyle={styles.messagesContent}
+                keyboardShouldPersistTaps="handled"
+                showsVerticalScrollIndicator={false}
+              >
+                {messages.length === 0 ? (
+                  <View style={styles.emptyState}>
+                    <View style={styles.emptyStateCard}>
+                      <LinearGradient
+                        colors={["#EBF4FF", "#DBEAFE"]}
+                        style={styles.emptyStateIcon}
+                      >
+                        <Ionicons
+                          name="chatbubbles-outline"
+                          size={32}
+                          color="#3B82F6"
+                        />
+                      </LinearGradient>
+                      <Text style={styles.emptyStateTitle}>
+                        Start a Conversation
+                      </Text>
+                      <Text style={styles.emptyStateSubtitle}>
+                        Ask questions about your pet's health, behavior,
+                        nutrition, or any concerns you might have.
+                      </Text>
+                      <View style={styles.suggestionBox}>
+                        <Text style={styles.suggestionTitle}>Try asking:</Text>
+                        <Text style={styles.suggestionText}>
+                          • "My dog is vomiting, what should I do?"
+                        </Text>
+                        <Text style={styles.suggestionText}>
+                          • "What vaccines does my kitten need?"
+                        </Text>
+                        <Text style={styles.suggestionText}>
+                          • "Is this behavior normal for my pet?"
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-              ) : (
-                messages.map((msg, index) => (
-                  <MessageBubble
-                    key={msg.id || `msg-${index}`}
-                    msg={msg}
-                    index={index}
-                    onFeedback={handleFeedback}
-                    nearbyDoctors={nearbyDoctors}
-                    navigation={navigation}
-                  />
-                ))
-              )}
-            </ScrollView>
-          </Animated.View>
+                ) : (
+                  messages.map((msg, index) => (
+                    <MessageBubble
+                      key={msg.id || `msg-${index}`}
+                      msg={msg}
+                      index={index}
+                      onFeedback={handleFeedback}
+                      nearbyDoctors={nearbyDoctors}
+                      navigation={navigation}
+                    />
+                  ))
+                )}
+              </ScrollView>
+            </Animated.View>
 
-          <View style={styles.inputWrapper}>
-            <ChatInput onSendMessage={handleSendMessage} isLoading={sending} />
+            <View style={styles.inputWrapper}>
+              <ChatInput
+                onSendMessage={handleSendMessage}
+                isLoading={sending}
+              />
+            </View>
           </View>
         </View>
       </KeyboardAvoidingView>
@@ -609,7 +843,7 @@ const styles = StyleSheet.create({
   },
   header: {
     paddingHorizontal: moderateScale(20),
-    paddingTop: Platform.OS === 'ios' ? verticalScale(50) : verticalScale(16),
+    paddingTop: Platform.OS === "ios" ? verticalScale(50) : verticalScale(16),
     paddingBottom: verticalScale(16),
     borderBottomLeftRadius: 20,
     borderBottomRightRadius: 20,
@@ -692,7 +926,7 @@ const styles = StyleSheet.create({
     borderTopColor: "#E5E7EB",
     paddingHorizontal: moderateScale(16),
     paddingTop: moderateScale(8),
-    paddingBottom: Platform.OS === 'ios' ? moderateScale(20) : moderateScale(8),
+    paddingBottom: Platform.OS === "ios" ? moderateScale(20) : moderateScale(8),
   },
 });
 

@@ -1,145 +1,5 @@
-// import AsyncStorage from '@react-native-async-storage/async-storage';
-// import { createContext, useContext, useEffect, useState } from 'react';
-
-// const AuthContext = createContext({});
-
-// export const AuthProvider = ({ children }) => {
-//   const [user, setUser] = useState(null);
-//   const [token, setToken] = useState(null);
-//   const [sessionToken, setSessionToken] = useState(null);
-//   const [chatRoomToken, setChatRoomToken] = useState(null); 
-//   const [isLoading, setIsLoading] = useState(true);
-//   const [isLoggedIn, setIsLoggedIn] = useState(false);
-
-//   useEffect(() => {
-//     checkAuthState();
-//   }, []);
-
-//   const checkAuthState = async () => {
-//     try {
-//       const storedToken = await AsyncStorage.getItem('userToken');
-//       const storedUser = await AsyncStorage.getItem('userData');
-//       const storedSessionToken = await AsyncStorage.getItem('sessionToken');
-
-//       if (storedToken && storedUser) {
-//         setToken(storedToken);
-//         setUser(JSON.parse(storedUser));
-//         setSessionToken(storedSessionToken);
-//         setIsLoggedIn(true);
-//         console.log('✅ User authenticated from storage');
-//       } else {
-//         console.log('❌ No authentication data found');
-//         setIsLoggedIn(false);
-//       }
-//     } catch (error) {
-//       console.error('❌ Error checking auth state:', error);
-//       setIsLoggedIn(false);
-//     } finally {
-//       setIsLoading(false);
-//     }
-//   };
-
-//   const login = async (userData, userToken, userSessionToken) => {
-//     try {
-//       // Store data in AsyncStorage
-//       await AsyncStorage.setItem('userToken', userToken);
-//       await AsyncStorage.setItem('userData', JSON.stringify(userData));
-//       if (userSessionToken) {
-//         await AsyncStorage.setItem('sessionToken', userSessionToken);
-//       }
-
-//       // Update state
-//       setUser(userData);
-//       setToken(userToken);
-//       setSessionToken(userSessionToken);
-//       setIsLoggedIn(true);
-
-//       console.log('✅ User logged in successfully');
-//     } catch (error) {
-//       console.error('❌ Error saving auth data:', error);
-//       throw error;
-//     }
-//   };
-
-//   const logout = async () => {
-//     try {
-//       // Remove data from AsyncStorage
-//      const profileKey = user?.id ? `profileCompleted:${user.id}` : null;
-// 		 const keys = ['userToken','userData','sessionToken','chatRoomToken'];
-// 		 if (profileKey) keys.push(profileKey);
-// 		 await AsyncStorage.multiRemove(keys);
-
-//       // Clear state
-//       setUser(null);
-//       setToken(null);
-//       setSessionToken(null);
-//       setIsLoggedIn(false);
-//       setChatRoomToken(null)
-
-//       console.log('✅ User logged out successfully');
-//     } catch (error) {
-//       console.error('❌ Error during logout:', error);
-//       throw error;
-//     }
-//   };
-
-//   const updateUser = async (updatedUserData) => {
-//     try {
-//       await AsyncStorage.setItem('userData', JSON.stringify(updatedUserData));
-//       setUser(updatedUserData);
-//       console.log('✅ User data updated');
-//     } catch (error) {
-//       console.error('❌ Error updating user data:', error);
-//       throw error;
-//     }
-//   };
-
-//   const updateChatRoomToken = async (token) => {
-//     try {
-//       setChatRoomToken(token);
-//       if (token) {
-//         await AsyncStorage.setItem('chatRoomToken', token);
-//       } else {
-//         await AsyncStorage.removeItem('chatRoomToken');
-//       }
-//     } catch (err) {
-//       console.error("❌ Error storing chatRoomToken:", err);
-//     }
-//   };
-
-
-//   const value = {
-//     user,
-//     token,
-//     sessionToken,
-//     chatRoomToken, // 🆕
-//     updateChatRoomToken, // 🆕
-//     isLoggedIn,
-//     isLoading,
-//     login,
-//     logout,
-//     updateUser,
-//     checkAuthState,
-//   };
-
-//   return (
-//     <AuthContext.Provider value={value}>
-//       {children}
-//     </AuthContext.Provider>
-//   );
-// };
-
-// export const useAuth = () => {
-//   const context = useContext(AuthContext);
-//   if (!context) {
-//     throw new Error('useAuth must be used within an AuthProvider');
-//   }
-//   return context;
-// };
-
-
-
-import React, { createContext, useState, useEffect, useContext } from "react";
+import axios from 'axios';
+import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export const AuthContext = createContext();
@@ -174,6 +34,24 @@ export const AuthProvider = ({ children }) => {
     loadAuthData();
   }, []);
 
+  // 🔹 Fetch nearby doctors
+  const fetchNearbyDoctors = useCallback(async () => {
+    if (!token || !user?.id) return;
+
+    try {
+      const response = await axios.get(
+        `https://snoutiq.com/backend/api/nearby-vets?user_id=${user.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data && Array.isArray(response.data.data)) {
+        updateNearbyDoctors(response.data.data); // Save in context + AsyncStorage
+      }
+    } catch (error) {
+      console.error("Failed to fetch nearby doctors", error);
+    }
+  }, [token, user?.id]);
+
   // 🔹 Login function
   const login = async (userData, jwtToken, initialChatToken = null) => {
     try {
@@ -187,8 +65,28 @@ export const AuthProvider = ({ children }) => {
         setChatRoomToken(initialChatToken);
         await AsyncStorage.setItem("chat_room_token", initialChatToken);
       }
+
+      // ✅ Fetch nearby doctors after login
+      fetchNearbyDoctors();
     } catch (error) {
       console.error('Error saving auth data:', error);
+    }
+  };
+
+  // 🔹 Update nearby doctors
+  const updateNearbyDoctors = async (newDoctors) => {
+    try {
+      setNearbyDoctors((prev) => {
+        const existingIds = new Set(prev.map((d) => d.id));
+        const merged = [
+          ...prev,
+          ...newDoctors.filter((d) => !existingIds.has(d.id)),
+        ];
+        AsyncStorage.setItem("nearby_doctors", JSON.stringify(merged));
+        return merged;
+      });
+    } catch (error) {
+      console.error('Error updating nearby doctors:', error);
     }
   };
 
@@ -206,52 +104,16 @@ export const AuthProvider = ({ children }) => {
     }
   };
 
-  // 🔹 Update chatRoomToken
-  const updateChatRoomToken = async (newToken) => {
-    try {
-      setChatRoomToken(newToken);
-      await AsyncStorage.setItem("chat_room_token", newToken);
-    } catch (error) {
-      console.error('Error updating chat room token:', error);
-    }
-  };
-
-  const updateNearbyDoctors = async (newDoctors) => {
-    try {
-      setNearbyDoctors((prev) => {
-        const existingIds = new Set(prev.map((d) => d.id));
-        const merged = [
-          ...prev,
-          ...newDoctors.filter((d) => !existingIds.has(d.id)),
-        ];
-        AsyncStorage.setItem("nearby_doctors", JSON.stringify(merged));
-        return merged;
-      });
-    } catch (error) {
-      console.error('Error updating nearby doctors:', error);
-    }
-  };
-
-  const updateUser = async (newUserData) => {
-    try {
-      setUser(newUserData);
-      await AsyncStorage.setItem("user", JSON.stringify(newUserData));
-    } catch (error) {
-      console.error('Error updating user:', error);
-    }
-  };
-
   const authValue = {
     user,
     token,
     chatRoomToken,
     login,
     logout,
-    updateChatRoomToken,
+    fetchNearbyDoctors,  // 🔹 Expose function to call manually if needed
     nearbyDoctors,
     updateNearbyDoctors,
     loading,
-    updateUser,
     isLoggedIn: !!token,
   };
 
@@ -262,11 +124,9 @@ export const AuthProvider = ({ children }) => {
   );
 };
 
-// 🔹 Create and export the useAuth hook
+// 🔹 Hook
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider');
-  }
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };

@@ -14,8 +14,7 @@
 //    <Stack.Screen name="PetParentEdit" component={PetParentEdit} options={{ headerShown: false, title: 'Pet Parent Edit' }} />
 //    <Stack.Screen name="SettingsScreen" component={SettingsScreen} options={{ headerShown: false, title: 'Setting Screen' }} />
 //     <Stack.Screen name="EditPetProfile" component={EditPetProfile} options={{ headerShown: false, title: 'Edit Pet Profile' }} />
-    
-    
+
 //      </Stack.Navigator>
 // );
 
@@ -35,6 +34,7 @@ import MainTabNavigator from "./BottomTabs";
 
 import ChangePassword from "../components/ChangePassword";
 import ContactUsScreen from "../components/ContactUsScreen";
+import DoctorAppointmentModal from "../components/DoctorAppointmentModal";
 import HelpCenterScreen from "../components/HelpCenterScreen";
 import TermsScreen from "../components/TermsScreen";
 import { socket } from "../context/Socket";
@@ -135,6 +135,7 @@ const MainStack = () => {
       {/* Regular screens */}
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="SettingsScreen" component={SettingsScreen} />
+      <Stack.Screen name="BookClinicVisit" component={DoctorAppointmentModal} />
       <Stack.Screen name="ChangePassword" component={ChangePassword} />
       <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
       <Stack.Screen name="TermsScreen" component={TermsScreen} />
