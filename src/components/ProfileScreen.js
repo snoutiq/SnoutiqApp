@@ -7,13 +7,13 @@ import {
   ActivityIndicator,
   Alert,
   Image,
+  Platform,
   SafeAreaView,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
-  View,
-  Platform
+  View
 } from 'react-native';
 import { moderateScale, scale, verticalScale } from 'react-native-size-matters';
 import { useAuth } from '../context/AuthContext';
@@ -32,8 +32,6 @@ const ProfileScreen = ({ navigation }) => {
   const menuItems = [
     { label: "Edit Profile", action: () => navigation.navigate('PetParentEdit'), icon: "person-outline" },
     { label: "Settings", action: () => navigation.navigate('SettingsScreen'), icon: "settings-outline" },
-    { label: "Favorites", action: () => console.log("Favorites"), icon: "heart-outline" },
-    { label: "Achievements", action: () => console.log("Achievements"), icon: "trophy-outline" },
     { label: "Help & Support", action: () => console.log("Help"), icon: "help-circle-outline" },
   ];
 

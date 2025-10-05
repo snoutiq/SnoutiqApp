@@ -21,18 +21,22 @@
 
 // export default MainStack;
 
-import React, { useState, useEffect } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as SplashScreen from "expo-splash-screen";
+import { useEffect, useState } from "react";
 
-import MainTabNavigator from "./BottomTabs";
 import EditPetProfile from "../components/EditPetProfile";
 import PetParentEdit from "../components/PetParentEdit";
+import ProfileScreen from "../components/ProfileScreen";
 import SettingsScreen from "../components/SettingsScreen";
 import PaymentScreen from "../PetComponent/PaymentScreen";
 import VideoCallBottomPopup from "../PetComponent/VideoCallBottomPopup";
-import ProfileScreen from "../components/ProfileScreen";
+import MainTabNavigator from "./BottomTabs";
 
+import ChangePassword from "../components/ChangePassword";
+import ContactUsScreen from "../components/ContactUsScreen";
+import HelpCenterScreen from "../components/HelpCenterScreen";
+import TermsScreen from "../components/TermsScreen";
 import { socket } from "../context/Socket";
 
 const Stack = createNativeStackNavigator();
@@ -131,6 +135,10 @@ const MainStack = () => {
       {/* Regular screens */}
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="SettingsScreen" component={SettingsScreen} />
+      <Stack.Screen name="ChangePassword" component={ChangePassword} />
+      <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
+      <Stack.Screen name="TermsScreen" component={TermsScreen} />
+      <Stack.Screen name="ContactUsScreen" component={ContactUsScreen} />
     </Stack.Navigator>
   );
 };
