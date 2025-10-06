@@ -1,295 +1,271 @@
+import React from 'react';
+import { ScrollView, StyleSheet, Text, View, Linking } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import {
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
-  Text,
-  TouchableOpacity,
-  View,
-} from 'react-native';
-import { moderateScale, scale, verticalScale } from 'react-native-size-matters';
+import { useNavigation } from '@react-navigation/native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
-const TermsOfService = ({navigation}) => {
-  
+const TermsScreen = () => {
+  const navigation = useNavigation();
+
+  const openEmail = () => {
+    Linking.openURL('mailto:contact.naukrion@gmail.com');
+  };
+
+  const openWebsite = () => {
+    Linking.openURL('https://naukrion.com/');
+  };
+
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.headerContainer}>
-        <TouchableOpacity style={styles.backButton}>
-          <Ionicons onPress={() => navigation.pop()} name='chevron-back' size={20} style={{color:"black"}}/>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Terms of Service</Text>
-        <View style={styles.placeholder} />
+      <View style={styles.header}>
+        <Ionicons 
+          name="arrow-back" 
+          size={24} 
+          color="#333" 
+          onPress={() => navigation.goBack()}
+          style={styles.backIcon}
+        />
+        <Text style={styles.headerTitle}>Terms & Conditions</Text>
       </View>
 
       <ScrollView 
-        style={styles.scrollView}
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
+        style={styles.scrollContainer}
+        contentContainerStyle={styles.contentContainer}
       >
-        {/* Hero Section */}
-        <LinearGradient
-          colors={['#7C3AED', '#EC4899']}
-          style={styles.heroSection}
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 0 }}
-        >
-          <Text style={styles.heroTitle}>Terms of Service</Text>
-          <Text style={styles.heroSubtitle}>Last updated: October 3, 2025</Text>
-        </LinearGradient>
+        <Text style={styles.lastUpdated}>Last updated: April 18, 2025</Text>
+        
+        <Text style={styles.introText}>
+          Please read these terms and conditions carefully before using Our Service.
+        </Text>
 
-        {/* Content */}
-        <View style={styles.content}>
-          <Text style={styles.introText}>
-            Please read these Terms of Service carefully before using NaukrionXpert Private Limited services.
-          </Text>
+        {/* Interpretation and Definitions */}
+        <Section title="Interpretation and Definitions">
+          <SubSection title="Interpretation">
+            <Paragraph>
+              The words of which the initial letter is capitalized have meanings defined under the following conditions. 
+              The following definitions shall have the same meaning regardless of whether they appear in singular or in plural.
+            </Paragraph>
+          </SubSection>
 
-          {/* Section 1 */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>1. Acceptance of Terms</Text>
-            <Text style={styles.paragraph}>
-              By accessing and using this application, you accept and agree to be bound by the terms and provision of this agreement. If you do not agree to these terms, please do not use our services.
-            </Text>
+          <SubSection title="Definitions">
+            <Paragraph>For the purposes of these Terms and Conditions:</Paragraph>
+            
+            <Definition term="Affiliate">
+              means an entity that controls, is controlled by or is under common control with a party, where "control" means ownership of 50% or more of the shares, equity interest or other securities entitled to vote for election of directors or other managing authority.
+            </Definition>
+
+            <Definition term="Country">
+              refers to: Haryana, India
+            </Definition>
+
+            <Definition term="Company">
+              (referred to as either "the Company", "We", "Us" or "Our" in this Agreement) refers to NaukrionXpert Private Limited, Plot 5, Royal Apartment, Nobel Enclave, Sector 22, Gurugram.
+            </Definition>
+
+            <Definition term="Device">
+              means any device that can access the Service such as a computer, a cellphone or a digital tablet.
+            </Definition>
+
+            <Definition term="Service">
+              refers to the Website.
+            </Definition>
+
+            <Definition term="Terms and Conditions">
+              (also referred as "Terms") mean these Terms and Conditions that form the entire agreement between You and the Company regarding the use of the Service.
+            </Definition>
+
+            <Definition term="Website">
+              refers to naukrion, accessible from <Text style={styles.link} onPress={openWebsite}>https://naukrion.com/</Text>
+            </Definition>
+          </SubSection>
+        </Section>
+
+        {/* Acknowledgment */}
+        <Section title="Acknowledgment">
+          <Paragraph>
+            These are the Terms and Conditions governing the use of this Service and the agreement that operates between You and the Company. 
+            These Terms and Conditions set out the rights and obligations of all users regarding the use of the Service.
+          </Paragraph>
+          <Paragraph>
+            Your access to and use of the Service is conditioned on Your acceptance of and compliance with these Terms and Conditions. 
+            These Terms and Conditions apply to all visitors, users and others who access or use the Service.
+          </Paragraph>
+          <Paragraph>
+            By accessing or using the Service You agree to be bound by these Terms and Conditions. 
+            If You disagree with any part of these Terms and Conditions then You may not access the Service.
+          </Paragraph>
+          <Paragraph>
+            You represent that you are over the age of 18. The Company does not permit those under 18 to use the Service.
+          </Paragraph>
+        </Section>
+
+        {/* Links to Other Websites */}
+        <Section title="Links to Other Websites">
+          <Paragraph>
+            Our Service may contain links to third-party web sites or services that are not owned or controlled by the Company.
+          </Paragraph>
+          <Paragraph>
+            The Company has no control over, and assumes no responsibility for, the content, privacy policies, or practices of any third party web sites or services. 
+            You further acknowledge and agree that the Company shall not be responsible or liable, directly or indirectly, for any damage or loss caused or alleged to be caused by or in connection with the use of or reliance on any such content, goods or services available on or through any such web sites or services.
+          </Paragraph>
+          <Paragraph>
+            We strongly advise You to read the terms and conditions and privacy policies of any third-party web sites or services that You visit.
+          </Paragraph>
+        </Section>
+
+        {/* Termination */}
+        <Section title="Termination">
+          <Paragraph>
+            We may terminate or suspend Your access immediately, without prior notice or liability, for any reason whatsoever, including without limitation if You breach these Terms and Conditions.
+          </Paragraph>
+          <Paragraph>
+            Upon termination, Your right to use the Service will cease immediately.
+          </Paragraph>
+        </Section>
+
+        {/* Limitation of Liability */}
+        <Section title="Limitation of Liability">
+          <Paragraph>
+            Notwithstanding any damages that You might incur, the entire liability of the Company and any of its suppliers under any provision of this Terms and Your exclusive remedy for all of the foregoing shall be limited to the amount actually paid by You through the Service or 100 USD if You haven't purchased anything through the Service.
+          </Paragraph>
+        </Section>
+
+        {/* Contact Us */}
+        <Section title="Contact Us">
+          <Paragraph>
+            If you have any questions about these Terms and Conditions, You can contact us:
+          </Paragraph>
+          <View style={styles.contactItem}>
+            <Ionicons name="mail-outline" size={16} color="#1783BB" />
+            <Text style={styles.contactText} onPress={openEmail}>contact.naukrion@gmail.com</Text>
           </View>
-
-          {/* Section 2 */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>2. Use License</Text>
-            <Text style={styles.paragraph}>
-              Permission is granted to temporarily download one copy of the materials on NaukrionXpert's application for personal, non-commercial transitory viewing only. This is the grant of a license, not a transfer of title.
-            </Text>
-            <Text style={styles.subTitle}>Under this license you may not:</Text>
-            <View style={styles.bulletPoint}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.bulletText}>Modify or copy the materials</Text>
-            </View>
-            <View style={styles.bulletPoint}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.bulletText}>Use the materials for any commercial purpose</Text>
-            </View>
-            <View style={styles.bulletPoint}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.bulletText}>Attempt to decompile or reverse engineer any software</Text>
-            </View>
-            <View style={styles.bulletPoint}>
-              <Text style={styles.bullet}>•</Text>
-              <Text style={styles.bulletText}>Remove any copyright or proprietary notations</Text>
-            </View>
-          </View>
-
-          {/* Section 3 */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>3. User Account</Text>
-            <Text style={styles.paragraph}>
-              When you create an account with us, you must provide information that is accurate, complete, and current at all times. Failure to do so constitutes a breach of the Terms.
-            </Text>
-            <Text style={styles.paragraph}>
-              You are responsible for safeguarding the password that you use to access the service and for any activities or actions under your password.
-            </Text>
-          </View>
-
-          {/* Section 4 */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>4. Intellectual Property</Text>
-            <Text style={styles.paragraph}>
-              The service and its original content, features, and functionality are and will remain the exclusive property of NaukrionXpert Private Limited and its licensors.
-            </Text>
-          </View>
-
-          {/* Section 5 */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>5. Termination</Text>
-            <Text style={styles.paragraph}>
-              We may terminate or suspend your account immediately, without prior notice or liability, for any reason whatsoever, including without limitation if you breach the Terms.
-            </Text>
-            <Text style={styles.paragraph}>
-              Upon termination, your right to use the service will immediately cease. If you wish to terminate your account, you may simply discontinue using the service.
-            </Text>
-          </View>
-
-          {/* Section 6 */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>6. Limitation of Liability</Text>
-            <Text style={styles.paragraph}>
-              In no event shall NaukrionXpert Private Limited, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages.
-            </Text>
-          </View>
-
-          {/* Section 7 */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>7. Governing Law</Text>
-            <Text style={styles.paragraph}>
-              These Terms shall be governed and construed in accordance with the laws of India, without regard to its conflict of law provisions.
-            </Text>
-          </View>
-
-          {/* Section 8 */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>8. Changes to Terms</Text>
-            <Text style={styles.paragraph}>
-              We reserve the right, at our sole discretion, to modify or replace these Terms at any time. We will provide notice of any significant changes by posting the new Terms on this page.
-            </Text>
-          </View>
-
-          {/* Section 9 */}
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>9. Contact Us</Text>
-            <Text style={styles.paragraph}>
-              If you have any questions about these Terms, please contact us at:
-            </Text>
-            <View style={styles.contactBox}>
-              <Text style={styles.contactText}>📧 contact.naukrion@gmail.com</Text>
-              <Text style={styles.contactText}>📞 +91 96341 65605</Text>
-              <Text style={styles.contactText}>
-                📍 Plot 5, Royal Apartment, Nobel Enclave, Sector 22, Gurugram Haryana, India - 122015
-              </Text>
-            </View>
-          </View>
-
-          {/* Footer */}
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              By using NaukrionXpert, you acknowledge that you have read and understood these Terms of Service and agree to be bound by them.
-            </Text>
-          </View>
-        </View>
+        </Section>
       </ScrollView>
-    </SafeAreaView>
+  </SafeAreaView>
   );
 };
 
-export default TermsOfService;
+// Reusable components for better organization
+const Section = ({ title, children }) => (
+  <View style={styles.section}>
+    <Text style={styles.sectionTitle}>{title}</Text>
+    {children}
+  </View>
+);
+
+const SubSection = ({ title, children }) => (
+  <View style={styles.subSection}>
+    <Text style={styles.subSectionTitle}>{title}</Text>
+    {children}
+  </View>
+);
+
+const Paragraph = ({ children }) => (
+  <Text style={styles.paragraph}>{children}</Text>
+);
+
+const Definition = ({ term, children }) => (
+  <View style={styles.definition}>
+    <Text style={styles.term}>{term}</Text>
+    <Text style={styles.definitionText}> - {children}</Text>
+  </View>
+);
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#f8f9fa',
   },
-  headerContainer: {
+  header: {
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: scale(20),
-    paddingVertical: verticalScale(15),
-    backgroundColor: '#FFFFFF',
+    padding: 16,
+    backgroundColor: '#fff',
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  backButton: {
-    width: scale(40),
+    borderBottomColor: '#eee',
   },
   backIcon: {
-    fontSize: moderateScale(24),
-    color: '#111827',
+    marginRight: 16,
   },
   headerTitle: {
-    fontSize: moderateScale(18),
+    fontSize: 18,
     fontWeight: '600',
-    color: '#111827',
+    color: '#333',
   },
-  placeholder: {
-    width: scale(40),
-  },
-  scrollView: {
+  scrollContainer: {
     flex: 1,
   },
-  scrollContent: {
-    paddingBottom: verticalScale(30),
+  contentContainer: {
+    padding: 16,
+    paddingBottom: 32,
   },
-  heroSection: {
-    paddingHorizontal: scale(24),
-    paddingVertical: verticalScale(30),
-    alignItems: 'center',
-  },
-  heroTitle: {
-    fontSize: moderateScale(26),
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
-    marginBottom: verticalScale(8),
-  },
-  heroSubtitle: {
-    fontSize: moderateScale(14),
-    color: '#FFFFFF',
-    opacity: 0.95,
-    textAlign: 'center',
-  },
-  content: {
-    paddingHorizontal: scale(20),
-    paddingTop: verticalScale(25),
+  lastUpdated: {
+    fontSize: 12,
+    color: '#666',
+    marginBottom: 16,
   },
   introText: {
-    fontSize: moderateScale(15),
-    color: '#374151',
-    lineHeight: verticalScale(24),
-    marginBottom: verticalScale(20),
-    fontStyle: 'italic',
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 24,
+    lineHeight: 20,
   },
   section: {
-    marginBottom: verticalScale(25),
+    marginBottom: 24,
   },
   sectionTitle: {
-    fontSize: moderateScale(18),
-    fontWeight: '700',
-    color: '#7C3AED',
-    marginBottom: verticalScale(12),
-  },
-  subTitle: {
-    fontSize: moderateScale(15),
+    fontSize: 18,
     fontWeight: '600',
-    color: '#374151',
-    marginTop: verticalScale(10),
-    marginBottom: verticalScale(8),
+    color: '#1783BB',
+    marginBottom: 12,
+  },
+  subSection: {
+    marginBottom: 16,
+    marginLeft: 8,
+  },
+  subSectionTitle: {
+    fontSize: 16,
+    fontWeight: '600',
+    color: '#333',
+    marginBottom: 8,
   },
   paragraph: {
-    fontSize: moderateScale(14),
-    color: '#4B5563',
-    lineHeight: verticalScale(22),
-    marginBottom: verticalScale(12),
-    textAlign: 'justify',
+    fontSize: 14,
+    color: '#333',
+    marginBottom: 12,
+    lineHeight: 20,
   },
-  bulletPoint: {
+  definition: {
     flexDirection: 'row',
-    marginLeft: scale(10),
-    marginBottom: verticalScale(8),
+    marginBottom: 8,
   },
-  bullet: {
-    fontSize: moderateScale(14),
-    color: '#7C3AED',
-    marginRight: scale(10),
-    fontWeight: 'bold',
+  term: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#333',
   },
-  bulletText: {
+  definitionText: {
+    fontSize: 14,
+    color: '#333',
     flex: 1,
-    fontSize: moderateScale(14),
-    color: '#4B5563',
-    lineHeight: verticalScale(22),
+    lineHeight: 20,
   },
-  contactBox: {
-    backgroundColor: '#F3F4F6',
-    padding: scale(16),
-    borderRadius: moderateScale(12),
-    marginTop: verticalScale(12),
-    borderLeftWidth: 4,
-    borderLeftColor: '#7C3AED',
+  link: {
+    color: '#1783BB',
+    textDecorationLine: 'underline',
+  },
+  contactItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
   },
   contactText: {
-    fontSize: moderateScale(13),
-    color: '#374151',
-    lineHeight: verticalScale(22),
-    marginBottom: verticalScale(6),
-  },
-  footer: {
-    backgroundColor: '#FEF3C7',
-    padding: scale(16),
-    borderRadius: moderateScale(12),
-    marginTop: verticalScale(20),
-  },
-  footerText: {
-    fontSize: moderateScale(13),
-    color: '#92400E',
-    lineHeight: verticalScale(20),
-    textAlign: 'center',
+    fontSize: 14,
+    color: '#1783BB',
+    marginLeft: 8,
+    textDecorationLine: 'underline',
   },
 });
+
+export default TermsScreen;

@@ -160,7 +160,7 @@ import Constants from "expo-constants";
 
 const isDev = __DEV__;
 
-const localIp = "192.168.1.7"; // Your machine LAN IP
+const localIp = "192.168.1.7"; 
 const socketUrl = isDev
   ? `http://${localIp}:4000`
   : "https://snoutiq.com";
@@ -171,7 +171,7 @@ console.log("🔧 Socket URL:", socketUrl);
 export const socket = io(socketUrl, {
   transports: ["websocket", "polling"],
   reconnection: true,
-  reconnectionAttempts: 5, // Reduce from Infinity
+  reconnectionAttempts: 5,
   reconnectionDelay: 2000,
   reconnectionDelayMax: 10000,
   timeout: 10000,

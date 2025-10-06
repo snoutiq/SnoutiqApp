@@ -1,141 +1,463 @@
-// import AsyncStorage from "@react-native-async-storage/async-storage";
-// import React, { useCallback, useEffect, useRef, useState } from "react";
+// // import AsyncStorage from "@react-native-async-storage/async-storage";
+// // import React, { useCallback, useEffect, useRef, useState } from "react";
+// // import {
+// //     ActivityIndicator,
+// //     Keyboard,
+// //     StyleSheet,
+// //     Text,
+// //     TextInput,
+// //     TouchableOpacity,
+// //     View,
+// // } from "react-native";
+
+// // const ChatInput = ({ onSendMessage, isLoading = false }) => {
+// //   const [message, setMessage] = useState("");
+// //   const hasLoadedSavedMessage = useRef(false);
+
+// //   // Load saved message only once when component mounts
+// //   useEffect(() => {
+// //     const loadMessage = async () => {
+// //       if (!hasLoadedSavedMessage.current) {
+// //         try {
+// //           const savedMessage = await AsyncStorage.getItem("messageIntended");
+// //           if (savedMessage) {
+// //             setMessage(savedMessage);
+// //             console.log("Loaded saved message:", savedMessage);
+// //           }
+// //         } catch (e) {
+// //           console.log("Error loading saved message:", e);
+// //         }
+// //         hasLoadedSavedMessage.current = true;
+// //       }
+// //     };
+// //     loadMessage();
+// //   }, []);
+
+// //   // Submit handler
+// //   const handleSubmit = useCallback(async () => {
+// //     if (message.trim() && !isLoading) {
+// //       try {
+// //         await AsyncStorage.removeItem("messageIntended");
+// //       } catch (e) {
+// //         console.log("Error clearing saved message:", e);
+// //       }
+// //       onSendMessage(message);
+// //       setMessage("");
+// //       Keyboard.dismiss();
+// //     }
+// //   }, [message, isLoading, onSendMessage]);
+
+// //   // Save message on change
+// //   const handleChange = useCallback(async (text) => {
+// //     setMessage(text);
+// //     try {
+// //       await AsyncStorage.setItem("messageIntended", text);
+// //     } catch (e) {
+// //       console.log("Error saving message:", e);
+// //     }
+// //   }, []);
+
+// //   return (
+// //     <View style={styles.container}>
+// //       {/* Mic Icon (emoji for simplicity) */}
+// //       <Text style={styles.micIcon}>🎤</Text>
+
+// //       {/* Input */}
+// //       <TextInput
+// //         style={styles.input}
+// //         value={message}
+// //         onChangeText={handleChange}
+// //         placeholder="Ask anything about your pet"
+// //         placeholderTextColor="#999"
+// //         editable={!isLoading}
+// //         onSubmitEditing={handleSubmit} // Send when pressing enter
+// //         blurOnSubmit={false}
+// //       />
+
+// //       {/* Send button */}
+// //       <TouchableOpacity
+// //         style={[
+// //           styles.sendButton,
+// //           (isLoading || !message.trim()) && styles.sendButtonDisabled,
+// //         ]}
+// //         onPress={handleSubmit}
+// //         disabled={isLoading || !message.trim()}
+// //       >
+// //         {isLoading ? (
+// //           <ActivityIndicator size="small" color="#fff" />
+// //         ) : (
+// //           <Text style={styles.sendIcon}>📤</Text>
+// //         )}
+// //       </TouchableOpacity>
+// //     </View>
+// //   );
+// // };
+
+// // export default React.memo(ChatInput);
+
+// // const styles = StyleSheet.create({
+// //   container: {
+// //     flexDirection: "row",
+// //     alignItems: "center",
+// //     borderWidth: 1,
+// //     borderColor: "#ddd",
+// //     borderRadius: 12,
+// //     paddingHorizontal: 10,
+// //     paddingVertical: 6,
+// //     margin: 10,
+// //     backgroundColor: "#fff",
+// //   },
+// //   micIcon: {
+// //     fontSize: 18,
+// //     color: "#666",
+// //     marginRight: 8,
+// //   },
+// //   input: {
+// //     flex: 1,
+// //     fontSize: 16,
+// //     paddingVertical: 8,
+// //     paddingHorizontal: 6,
+// //     color: "#000",
+// //   },
+// //   sendButton: {
+// //     width: 40,
+// //     height: 40,
+// //     borderRadius: 20,
+// //     backgroundColor: "#2761E8",
+// //     alignItems: "center",
+// //     justifyContent: "center",
+// //     marginLeft: 8,
+// //   },
+// //   sendButtonDisabled: {
+// //     opacity: 0.5,
+// //   },
+// //   sendIcon: {
+// //     fontSize: 18,
+// //     color: "#fff",
+// //   },
+// // });
+// import React, { useState, useRef } from 'react';
 // import {
-//     ActivityIndicator,
-//     Keyboard,
-//     StyleSheet,
-//     Text,
-//     TextInput,
-//     TouchableOpacity,
-//     View,
-// } from "react-native";
+//   View,
+//   TextInput,
+//   TouchableOpacity,
+//   StyleSheet,
+//   Animated,
+//   Platform,
+//   Text,
+//   ActivityIndicator,
+//   ScrollView,
+//   Keyboard
+// } from 'react-native';
+// import { Ionicons } from '@expo/vector-icons';
+// import { moderateScale, scale, verticalScale } from 'react-native-size-matters';
+// import { LinearGradient } from 'expo-linear-gradient';
 
-// const ChatInput = ({ onSendMessage, isLoading = false }) => {
-//   const [message, setMessage] = useState("");
-//   const hasLoadedSavedMessage = useRef(false);
+// const ChatInput = ({ onSendMessage, isLoading }) => {
+//   const [message, setMessage] = useState('');
+//   const [inputHeight, setInputHeight] = useState(moderateScale(48));
+//   const [showSuggestions, setShowSuggestions] = useState(true);
+//   const scaleAnim = useRef(new Animated.Value(1)).current;
+//   const inputRef = useRef(null);
 
-//   // Load saved message only once when component mounts
-//   useEffect(() => {
-//     const loadMessage = async () => {
-//       if (!hasLoadedSavedMessage.current) {
-//         try {
-//           const savedMessage = await AsyncStorage.getItem("messageIntended");
-//           if (savedMessage) {
-//             setMessage(savedMessage);
-//             console.log("Loaded saved message:", savedMessage);
-//           }
-//         } catch (e) {
-//           console.log("Error loading saved message:", e);
-//         }
-//         hasLoadedSavedMessage.current = true;
-//       }
-//     };
-//     loadMessage();
-//   }, []);
+//   const maxHeight = moderateScale(120);
+//   const minHeight = moderateScale(48);
 
-//   // Submit handler
-//   const handleSubmit = useCallback(async () => {
+//   const handleSend = () => {
 //     if (message.trim() && !isLoading) {
-//       try {
-//         await AsyncStorage.removeItem("messageIntended");
-//       } catch (e) {
-//         console.log("Error clearing saved message:", e);
-//       }
-//       onSendMessage(message);
-//       setMessage("");
+//       onSendMessage(message.trim());
+//       setMessage('');
+//       setInputHeight(minHeight);
+//       setShowSuggestions(true);
 //       Keyboard.dismiss();
+      
+//       // Button press animation
+//       Animated.sequence([
+//         Animated.timing(scaleAnim, {
+//           toValue: 0.95,
+//           duration: 100,
+//           useNativeDriver: true,
+//         }),
+//         Animated.timing(scaleAnim, {
+//           toValue: 1,
+//           duration: 100,
+//           useNativeDriver: true,
+//         }),
+//       ]).start();
 //     }
-//   }, [message, isLoading, onSendMessage]);
+//   };
 
-//   // Save message on change
-//   const handleChange = useCallback(async (text) => {
+//   const handleContentSizeChange = (event) => {
+//     const { height } = event.nativeEvent.contentSize;
+//     const newHeight = Math.min(Math.max(height + moderateScale(20), minHeight), maxHeight);
+//     setInputHeight(newHeight);
+//   };
+
+//   const handleTextChange = (text) => {
 //     setMessage(text);
-//     try {
-//       await AsyncStorage.setItem("messageIntended", text);
-//     } catch (e) {
-//       console.log("Error saving message:", e);
-//     }
-//   }, []);
+//     setShowSuggestions(text.length === 0);
+//   };
+
+//   const handleFocus = () => {
+//     setShowSuggestions(message.length === 0);
+//   };
+
+//   const quickSuggestions = [
+//     { icon: '🤒', text: 'My pet is not eating well' },
+//     { icon: '🐕', text: 'Unusual behavior noticed' },
+//     { icon: '🏥', text: 'Need vaccination info' },
+//     { icon: '💊', text: 'Medication guidance' },
+//   ];
+
+//   const handleSuggestionPress = (suggestion) => {
+//     setMessage(suggestion.text);
+//     setShowSuggestions(false);
+//     inputRef.current?.focus();
+//   };
 
 //   return (
 //     <View style={styles.container}>
-//       {/* Mic Icon (emoji for simplicity) */}
-//       <Text style={styles.micIcon}>🎤</Text>
+//       {/* Quick Suggestions - Only show when input is empty */}
+//       {showSuggestions && message === '' && (
+//         <View style={styles.suggestionsContainer}>
+//           <Text style={styles.suggestionsTitle}>Quick suggestions:</Text>
+//           <ScrollView 
+//             horizontal 
+//             showsHorizontalScrollIndicator={false}
+//             contentContainerStyle={styles.suggestionsContent}
+//           >
+//             {quickSuggestions.map((suggestion, index) => (
+//               <TouchableOpacity
+//                 key={index}
+//                 style={styles.suggestionChip}
+//                 onPress={() => handleSuggestionPress(suggestion)}
+//                 activeOpacity={0.7}
+//               >
+//                 <Text style={styles.suggestionEmoji}>{suggestion.icon}</Text>
+//                 <Text style={styles.suggestionText}>{suggestion.text}</Text>
+//               </TouchableOpacity>
+//             ))}
+//           </ScrollView>
+//         </View>
+//       )}
 
-//       {/* Input */}
-//       <TextInput
-//         style={styles.input}
-//         value={message}
-//         onChangeText={handleChange}
-//         placeholder="Ask anything about your pet"
-//         placeholderTextColor="#999"
-//         editable={!isLoading}
-//         onSubmitEditing={handleSubmit} // Send when pressing enter
-//         blurOnSubmit={false}
-//       />
+//       {/* Input Container */}
+//       <View style={styles.inputContainer}>
+//         <View style={[styles.inputWrapper, { height: inputHeight }]}>
+//           <TextInput
+//             ref={inputRef}
+//             style={[styles.textInput, { height: inputHeight - moderateScale(20) }]}
+//             placeholder="Type your message..."
+//             placeholderTextColor="#9CA3AF"
+//             value={message}
+//             onChangeText={handleTextChange}
+//             onFocus={handleFocus}
+//             multiline
+//             textAlignVertical="center"
+//             onContentSizeChange={handleContentSizeChange}
+//             scrollEnabled={inputHeight >= maxHeight}
+//             maxLength={1000}
+//             editable={!isLoading}
+//             returnKeyType="send"
+//             onSubmitEditing={handleSend}
+//             blurOnSubmit={false}
+//           />
+          
+//           {/* Attachment Button */}
+//           {/* <TouchableOpacity
+//             style={styles.attachButton}
+//             onPress={() => {
+//               // Handle attachment functionality
+//             }}
+//             disabled={isLoading}
+//             activeOpacity={0.7}
+//           >
+//             <Ionicons 
+//               name="camera-outline" 
+//               size={22} 
+//               color={isLoading ? '#D1D5DB' : '#6B7280'} 
+//             />
+//           </TouchableOpacity> */}
+//         </View>
 
-//       {/* Send button */}
-//       <TouchableOpacity
-//         style={[
-//           styles.sendButton,
-//           (isLoading || !message.trim()) && styles.sendButtonDisabled,
-//         ]}
-//         onPress={handleSubmit}
-//         disabled={isLoading || !message.trim()}
-//       >
-//         {isLoading ? (
-//           <ActivityIndicator size="small" color="#fff" />
-//         ) : (
-//           <Text style={styles.sendIcon}>📤</Text>
-//         )}
-//       </TouchableOpacity>
+//         {/* Send Button */}
+//         <Animated.View style={[styles.sendButtonContainer, { transform: [{ scale: scaleAnim }] }]}>
+//           <TouchableOpacity
+//             style={[
+//               styles.sendButton,
+//               (message.trim() && !isLoading) ? styles.sendButtonActive : styles.sendButtonInactive
+//             ]}
+//             onPress={handleSend}
+//             disabled={!message.trim() || isLoading}
+//             activeOpacity={0.8}
+//           >
+//             {(message.trim() && !isLoading) ? (
+//               <LinearGradient
+//                 colors={['#4F46E5', '#7C3AED']}
+//                 style={styles.sendButtonGradient}
+//                 start={{ x: 0, y: 0 }}
+//                 end={{ x: 1, y: 1 }}
+//               >
+//                 {isLoading ? (
+//                   <ActivityIndicator color="#FFFFFF" size="small" />
+//                 ) : (
+//                   <Ionicons name="send" size={20} color="#FFFFFF" />
+//                 )}
+//               </LinearGradient>
+//             ) : (
+//               <View style={styles.sendButtonInactiveContent}>
+//                 <Ionicons name="send" size={20} color="#D1D5DB" />
+//               </View>
+//             )}
+//           </TouchableOpacity>
+//         </Animated.View>
+//       </View>
+
+//       {/* Character Counter */}
+//       {message.length > 800 && (
+//         <View style={styles.characterCounter}>
+//           <Text style={[
+//             styles.characterCountText,
+//             message.length > 950 && styles.characterCountWarning
+//           ]}>
+//             {message.length}/1000
+//           </Text>
+//         </View>
+//       )}
 //     </View>
 //   );
 // };
 
-// export default React.memo(ChatInput);
-
 // const styles = StyleSheet.create({
 //   container: {
-//     flexDirection: "row",
-//     alignItems: "center",
+//     paddingBottom: moderateScale(84),
+//   },
+//   suggestionsContainer: {
+//     marginBottom: moderateScale(16),
+//   },
+//   suggestionsTitle: {
+//     fontSize: moderateScale(12),
+//     color: '#6B7280',
+//     fontWeight: '600',
+//     marginBottom: moderateScale(8),
+//     marginHorizontal: moderateScale(4),
+//   },
+//   suggestionsContent: {
+//     paddingHorizontal: moderateScale(4),
+//     gap: moderateScale(8),
+//   },
+//   suggestionChip: {
+//     flexDirection: 'row',
+//     alignItems: 'center',
+//     backgroundColor: '#FFFFFF',
+//     paddingHorizontal: moderateScale(16),
+//     paddingVertical: moderateScale(8),
+//     borderRadius: 20,
 //     borderWidth: 1,
-//     borderColor: "#ddd",
-//     borderRadius: 12,
-//     paddingHorizontal: 10,
-//     paddingVertical: 6,
-//     margin: 10,
-//     backgroundColor: "#fff",
+//     borderColor: '#E5E7EB',
+//     shadowColor: '#000',
+//     shadowOffset: { width: 0, height: 2 },
+//     shadowOpacity: 0.05,
+//     shadowRadius: 4,
+//     elevation: 2,
+//     minWidth: moderateScale(120),
 //   },
-//   micIcon: {
-//     fontSize: 18,
-//     color: "#666",
-//     marginRight: 8,
+//   suggestionEmoji: {
+//     fontSize: moderateScale(16),
+//     marginRight: moderateScale(8),
 //   },
-//   input: {
+//   suggestionText: {
+//     fontSize: moderateScale(12),
+//     color: '#374151',
+//     fontWeight: '500',
+//     flexShrink: 1,
+//   },
+//   inputContainer: {
+//     flexDirection: 'row',
+//     alignItems: 'flex-end',
+//     gap: moderateScale(12),
+//   },
+//   inputWrapper: {
 //     flex: 1,
-//     fontSize: 16,
-//     paddingVertical: 8,
-//     paddingHorizontal: 6,
-//     color: "#000",
+//     backgroundColor: '#FFFFFF',
+//     borderRadius: 24,
+//     borderWidth: 1.5,
+//     borderColor: '#E5E7EB',
+//     flexDirection: 'row',
+//     alignItems: 'flex-end',
+//     paddingHorizontal: moderateScale(16),
+//     paddingVertical: moderateScale(10),
+//     shadowColor: '#000',
+//     shadowOffset: { width: 0, height: 2 },
+//     shadowOpacity: 0.08,
+//     shadowRadius: 8,
+//     elevation: 3,
+//     minHeight: moderateScale(48),
+//   },
+//   textInput: {
+//     flex: 1,
+//     fontSize: moderateScale(16),
+//     color: '#1F2937',
+//     paddingTop: Platform.OS === 'ios' ? moderateScale(10) : moderateScale(6),
+//     paddingBottom: Platform.OS === 'ios' ? moderateScale(10) : moderateScale(6),
+//     lineHeight: moderateScale(22),
+//     maxHeight: moderateScale(100),
+//   },
+//   attachButton: {
+//     marginLeft: moderateScale(8),
+//     marginBottom: moderateScale(2),
+//   },
+//   sendButtonContainer: {
+//     marginBottom: moderateScale(4),
 //   },
 //   sendButton: {
-//     width: 40,
-//     height: 40,
-//     borderRadius: 20,
-//     backgroundColor: "#2761E8",
-//     alignItems: "center",
-//     justifyContent: "center",
-//     marginLeft: 8,
+//     width: moderateScale(48),
+//     height: moderateScale(48),
+//     borderRadius: 24,
+//     overflow: 'hidden',
+//     shadowColor: '#4F46E5',
+//     shadowOffset: { width: 0, height: 3 },
+//     shadowOpacity: 0.3,
+//     shadowRadius: 6,
+//     elevation: 6,
 //   },
-//   sendButtonDisabled: {
-//     opacity: 0.5,
+//   sendButtonActive: {
+//     transform: [{ scale: 1 }],
 //   },
-//   sendIcon: {
-//     fontSize: 18,
-//     color: "#fff",
+//   sendButtonInactive: {
+//     backgroundColor: '#F9FAFB',
+//     borderWidth: 1.5,
+//     borderColor: '#E5E7EB',
+//     shadowOpacity: 0,
+//     elevation: 0,
+//   },
+//   sendButtonGradient: {
+//     flex: 1,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//   },
+//   sendButtonInactiveContent: {
+//     flex: 1,
+//     justifyContent: 'center',
+//     alignItems: 'center',
+//     backgroundColor: '#F9FAFB',
+//   },
+//   characterCounter: {
+//     alignItems: 'flex-end',
+//     marginTop: moderateScale(6),
+//     marginRight: moderateScale(4),
+//   },
+//   characterCountText: {
+//     fontSize: moderateScale(10),
+//     color: '#9CA3AF',
+//     fontWeight: '500',
+//   },
+//   characterCountWarning: {
+//     color: '#DC2626',
 //   },
 // });
+
+// export default ChatInput;
 import React, { useState, useRef } from 'react';
 import {
   View,
@@ -153,15 +475,35 @@ import { Ionicons } from '@expo/vector-icons';
 import { moderateScale, scale, verticalScale } from 'react-native-size-matters';
 import { LinearGradient } from 'expo-linear-gradient';
 
+// Responsive constants
+const FONT_SIZES = {
+  tiny: moderateScale(10),
+  small: moderateScale(12),
+  medium: moderateScale(14),
+  large: moderateScale(16),
+  xlarge: moderateScale(18),
+  xxlarge: moderateScale(20),
+  xxxlarge: moderateScale(24),
+};
+
+const SPACING = {
+  xs: moderateScale(4),
+  sm: moderateScale(8),
+  md: moderateScale(12),
+  lg: moderateScale(16),
+  xl: moderateScale(20),
+  xxl: moderateScale(24),
+};
+
 const ChatInput = ({ onSendMessage, isLoading }) => {
   const [message, setMessage] = useState('');
-  const [inputHeight, setInputHeight] = useState(moderateScale(48));
+  const [inputHeight, setInputHeight] = useState(verticalScale(48));
   const [showSuggestions, setShowSuggestions] = useState(true);
   const scaleAnim = useRef(new Animated.Value(1)).current;
   const inputRef = useRef(null);
 
-  const maxHeight = moderateScale(120);
-  const minHeight = moderateScale(48);
+  const maxHeight = verticalScale(120);
+  const minHeight = verticalScale(48);
 
   const handleSend = () => {
     if (message.trim() && !isLoading) {
@@ -189,7 +531,7 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
 
   const handleContentSizeChange = (event) => {
     const { height } = event.nativeEvent.contentSize;
-    const newHeight = Math.min(Math.max(height + moderateScale(20), minHeight), maxHeight);
+    const newHeight = Math.min(Math.max(height + verticalScale(20), minHeight), maxHeight);
     setInputHeight(newHeight);
   };
 
@@ -207,6 +549,8 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
     { icon: '🐕', text: 'Unusual behavior noticed' },
     { icon: '🏥', text: 'Need vaccination info' },
     { icon: '💊', text: 'Medication guidance' },
+    { icon: '🌡️', text: 'Fever symptoms' },
+    { icon: '🤢', text: 'Vomiting or diarrhea' },
   ];
 
   const handleSuggestionPress = (suggestion) => {
@@ -234,7 +578,9 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
                 activeOpacity={0.7}
               >
                 <Text style={styles.suggestionEmoji}>{suggestion.icon}</Text>
-                <Text style={styles.suggestionText}>{suggestion.text}</Text>
+                <Text style={styles.suggestionText} numberOfLines={1}>
+                  {suggestion.text}
+                </Text>
               </TouchableOpacity>
             ))}
           </ScrollView>
@@ -246,8 +592,11 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
         <View style={[styles.inputWrapper, { height: inputHeight }]}>
           <TextInput
             ref={inputRef}
-            style={[styles.textInput, { height: inputHeight - moderateScale(20) }]}
-            placeholder="Type your message..."
+            style={[styles.textInput, { 
+              height: Math.max(inputHeight - verticalScale(20), verticalScale(28)),
+              maxHeight: maxHeight - verticalScale(20)
+            }]}
+            placeholder="Describe your pet's symptoms or ask a question..."
             placeholderTextColor="#9CA3AF"
             value={message}
             onChangeText={handleTextChange}
@@ -262,22 +611,6 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
             onSubmitEditing={handleSend}
             blurOnSubmit={false}
           />
-          
-          {/* Attachment Button */}
-          {/* <TouchableOpacity
-            style={styles.attachButton}
-            onPress={() => {
-              // Handle attachment functionality
-            }}
-            disabled={isLoading}
-            activeOpacity={0.7}
-          >
-            <Ionicons 
-              name="camera-outline" 
-              size={22} 
-              color={isLoading ? '#D1D5DB' : '#6B7280'} 
-            />
-          </TouchableOpacity> */}
         </View>
 
         {/* Send Button */}
@@ -293,7 +626,7 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
           >
             {(message.trim() && !isLoading) ? (
               <LinearGradient
-                colors={['#4F46E5', '#7C3AED']}
+                colors={['#7C3AED', '#EC4899']}
                 style={styles.sendButtonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -301,12 +634,12 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
                 {isLoading ? (
                   <ActivityIndicator color="#FFFFFF" size="small" />
                 ) : (
-                  <Ionicons name="send" size={20} color="#FFFFFF" />
+                  <Ionicons name="send" size={scale(20)} color="#FFFFFF" />
                 )}
               </LinearGradient>
             ) : (
               <View style={styles.sendButtonInactiveContent}>
-                <Ionicons name="send" size={20} color="#D1D5DB" />
+                <Ionicons name="send" size={scale(20)} color="#D1D5DB" />
               </View>
             )}
           </TouchableOpacity>
@@ -330,95 +663,98 @@ const ChatInput = ({ onSendMessage, isLoading }) => {
 
 const styles = StyleSheet.create({
   container: {
-    paddingBottom: moderateScale(84),
+    backgroundColor: '#FFFFFF',
+    paddingTop: SPACING.xs,
+    paddingBottom: Platform.OS === 'ios' ? verticalScale(90) : verticalScale(50),
+    paddingHorizontal: SPACING.xs,
+    borderTopWidth: 1,
+    borderTopColor: '#F3F4F6',
   },
   suggestionsContainer: {
-    marginBottom: moderateScale(16),
+    marginBottom: SPACING.lg,
   },
   suggestionsTitle: {
-    fontSize: moderateScale(12),
+    fontSize: FONT_SIZES.small,
     color: '#6B7280',
     fontWeight: '600',
-    marginBottom: moderateScale(8),
-    marginHorizontal: moderateScale(4),
+    marginBottom: SPACING.sm,
+    marginHorizontal: SPACING.xs,
   },
   suggestionsContent: {
-    paddingHorizontal: moderateScale(4),
-    gap: moderateScale(8),
+    paddingHorizontal: SPACING.xs,
+    gap: SPACING.sm,
   },
   suggestionChip: {
     flexDirection: 'row',
     alignItems: 'center',
     backgroundColor: '#FFFFFF',
-    paddingHorizontal: moderateScale(16),
-    paddingVertical: moderateScale(8),
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.sm,
+    borderRadius: moderateScale(20),
+    borderWidth: 1.5,
+    borderColor: '#F3F4F6',
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: scale(2) },
     shadowOpacity: 0.05,
-    shadowRadius: 4,
+    shadowRadius: scale(4),
     elevation: 2,
-    minWidth: moderateScale(120),
+    minWidth: scale(120),
+    maxWidth: scale(200),
   },
   suggestionEmoji: {
-    fontSize: moderateScale(16),
-    marginRight: moderateScale(8),
+    fontSize: FONT_SIZES.medium,
+    marginRight: SPACING.sm,
   },
   suggestionText: {
-    fontSize: moderateScale(12),
+    fontSize: FONT_SIZES.small,
     color: '#374151',
     fontWeight: '500',
-    flexShrink: 1,
+    flex: 1,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'flex-end',
-    gap: moderateScale(12),
+    gap: SPACING.md,
   },
   inputWrapper: {
     flex: 1,
     backgroundColor: '#FFFFFF',
-    borderRadius: 24,
+    borderRadius: moderateScale(24),
     borderWidth: 1.5,
     borderColor: '#E5E7EB',
     flexDirection: 'row',
     alignItems: 'flex-end',
-    paddingHorizontal: moderateScale(16),
-    paddingVertical: moderateScale(10),
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.md,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
+    shadowOffset: { width: 0, height: scale(2) },
     shadowOpacity: 0.08,
-    shadowRadius: 8,
+    shadowRadius: scale(8),
     elevation: 3,
-    minHeight: moderateScale(48),
+    minHeight: verticalScale(48),
+    maxHeight: verticalScale(120),
   },
   textInput: {
     flex: 1,
-    fontSize: moderateScale(16),
+    fontSize: FONT_SIZES.medium,
     color: '#1F2937',
-    paddingTop: Platform.OS === 'ios' ? moderateScale(10) : moderateScale(6),
-    paddingBottom: Platform.OS === 'ios' ? moderateScale(10) : moderateScale(6),
-    lineHeight: moderateScale(22),
-    maxHeight: moderateScale(100),
-  },
-  attachButton: {
-    marginLeft: moderateScale(8),
-    marginBottom: moderateScale(2),
+    paddingTop: Platform.OS === 'ios' ? verticalScale(10) : verticalScale(6),
+    paddingBottom: Platform.OS === 'ios' ? verticalScale(10) : verticalScale(6),
+    lineHeight: FONT_SIZES.medium * 1.4,
+    textAlignVertical: 'center',
   },
   sendButtonContainer: {
-    marginBottom: moderateScale(4),
+    marginBottom: verticalScale(4),
   },
   sendButton: {
-    width: moderateScale(48),
-    height: moderateScale(48),
-    borderRadius: 24,
+    width: scale(48),
+    height: scale(48),
+    borderRadius: scale(24),
     overflow: 'hidden',
-    shadowColor: '#4F46E5',
-    shadowOffset: { width: 0, height: 3 },
+    shadowColor: '#7C3AED',
+    shadowOffset: { width: 0, height: scale(3) },
     shadowOpacity: 0.3,
-    shadowRadius: 6,
+    shadowRadius: scale(6),
     elevation: 6,
   },
   sendButtonActive: {
@@ -435,25 +771,28 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
+    borderRadius: scale(24),
   },
   sendButtonInactiveContent: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
     backgroundColor: '#F9FAFB',
+    borderRadius: scale(24),
   },
   characterCounter: {
     alignItems: 'flex-end',
-    marginTop: moderateScale(6),
-    marginRight: moderateScale(4),
+    marginTop: SPACING.xs,
+    marginRight: SPACING.xs,
   },
   characterCountText: {
-    fontSize: moderateScale(10),
+    fontSize: FONT_SIZES.tiny,
     color: '#9CA3AF',
     fontWeight: '500',
   },
   characterCountWarning: {
     color: '#DC2626',
+    fontWeight: '600',
   },
 });
 
