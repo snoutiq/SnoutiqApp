@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // import { LinearGradient } from 'expo-linear-gradient';
 // import { useState } from 'react';
 // import {
@@ -314,6 +315,8 @@
 
 // export default SettingsScreen;
 
+=======
+>>>>>>> f0df6cf22df0a9ff3f367c857a38f41a8985ab77
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { LinearGradient } from 'expo-linear-gradient';

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 // import AsyncStorage from '@react-native-async-storage/async-storage';
 // import { LinearGradient } from 'expo-linear-gradient';
 // import { useEffect, useState } from 'react';
@@ -348,6 +349,8 @@
 
 // export default PetParentEditScreen;
 
+=======
+>>>>>>> f0df6cf22df0a9ff3f367c857a38f41a8985ab77
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';

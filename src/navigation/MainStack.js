@@ -20,22 +20,29 @@
 
 // export default MainStack;
 
-import React, { useState, useEffect } from "react";
 import { createNativeStackNavigator } from "@react-navigation/native-stack";
 import * as SplashScreen from "expo-splash-screen";
+import { useEffect, useState } from "react";
 
-import MainTabNavigator from "./BottomTabs";
 import EditPetProfile from "../components/EditPetProfile";
 import PetParentEdit from "../components/PetParentEdit";
+import ProfileScreen from "../components/ProfileScreen";
 import SettingsScreen from "../components/SettingsScreen";
 import PaymentScreen from "../PetComponent/PaymentScreen";
 import VideoCallBottomPopup from "../PetComponent/VideoCallBottomPopup";
-import ProfileScreen from "../components/ProfileScreen";
+import MainTabNavigator from "./BottomTabs";
 
-import { socket } from "../context/Socket";
+import ChangePassword from "../components/ChangePassword";
+import ContactUsScreen from "../components/ContactUsScreen";
 import DoctorAppointmentModal from "../components/DoctorAppointmentModal";
+<<<<<<< HEAD
 import ChangePasswordScreen from "../components/ChangePasswordScreen";
 import HelpCenter from "../components/HelpCenterScreen";
+=======
+import HelpCenterScreen from "../components/HelpCenterScreen";
+import TermsScreen from "../components/TermsScreen";
+import { socket } from "../context/Socket";
+>>>>>>> f0df6cf22df0a9ff3f367c857a38f41a8985ab77
 
 const Stack = createNativeStackNavigator();
 
@@ -134,8 +141,15 @@ const MainStack = () => {
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="SettingsScreen" component={SettingsScreen} />
       <Stack.Screen name="BookClinicVisit" component={DoctorAppointmentModal} />
+<<<<<<< HEAD
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen}/>
       <Stack.Screen name="HelpCenter" component={HelpCenter}/>
+=======
+      <Stack.Screen name="ChangePassword" component={ChangePassword} />
+      <Stack.Screen name="HelpCenterScreen" component={HelpCenterScreen} />
+      <Stack.Screen name="TermsScreen" component={TermsScreen} />
+      <Stack.Screen name="ContactUsScreen" component={ContactUsScreen} />
+>>>>>>> f0df6cf22df0a9ff3f367c857a38f41a8985ab77
     </Stack.Navigator>
   );
 };

@@ -1898,14 +1898,6 @@ export default function HomeScreen({ navigation }) {
 
   return (
     <SafeAreaView style={styles.container}>
-       {showPetModal && (
-        <ProfileCompletionModalAuto
-          onComplete={() => setShowPetModal(false)}
-          updateUser={updateUser}
-          token={token}
-          user={user}
-        />
-      )}
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
@@ -2489,51 +2481,3 @@ const styles = StyleSheet.create({
     color: "#6B7280",
   },
 });
-
-// import React, { useContext,useEffect,useState} from "react";
-// import { View, Text } from "react-native";
-// import ProfileCompletionModalAuto from "../utils/ProfileCompletionModalAuto";
-// import { AuthContext } from "../context/AuthContext";
-
-// export default function HomeScreen({ navigation }) {
-//   const {
-//     updateUser,
-//     user,
-//     token,
-//   } = useContext(AuthContext);
-//   console.log(updateUser,'idjkd');
-  
-//    const [showPetModal, setShowPetModal] = useState(false);
-
-//  useEffect(() => {
-//   if (user) {
-//     const hasPetData =
-//       user.pet_name && user.pet_gender && user.breed && user.pet_age;
-
-//     if (!hasPetData) {
-//       console.log("Missing pet data, showing modal");
-//       setShowPetModal(true);
-//     } else {
-//       console.log("Pet data complete, hiding modal");
-//       setShowPetModal(false);
-//     }
-//   } else {
-//     setShowPetModal(false);
-//   }
-// }, [user]);
-
-
-//   return (
-//     <View>
-//        {showPetModal && (
-//         <ProfileCompletionModalAuto
-//           onComplete={() => setShowPetModal(false)}
-//           updateUser={updateUser}
-//           token={token}
-//           user={user}
-//         />
-//       )}
-//       <Text>asdfasd</Text>
-//     </View>
-//   );
-// }
