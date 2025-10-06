@@ -153,17 +153,18 @@
 //   },
 // };
 
-import { Platform } from "react-native";
+
 import { io } from "socket.io-client";
+import { Platform } from "react-native";
+import Constants from "expo-constants";
 
-let socketUrl;
+const isDev = __DEV__;
 
-if (__DEV__) {
-  // For both Android and iOS in development, use the same IP
-  socketUrl = "http://10.98.222.171:4000";
-} else {
-  socketUrl = "https://snoutiq.com";
-}
+const localIp = "192.168.1.7"; // Your machine LAN IP
+const socketUrl = isDev
+  ? `http://${localIp}:4000`
+  : "https://snoutiq.com";
+
 
 console.log("🔧 Socket URL:", socketUrl);
 

@@ -25,7 +25,7 @@ import { moderateScale, verticalScale } from "react-native-size-matters";
 import { LinearGradient } from "expo-linear-gradient";
 import { MessageBubble } from "./MessageBubble";
 import ChatInput from "../components/ChatInput";
-import PetDetailsModal from "../components/PetDetailsModal";
+// import PetDetailsModal from "../components/PetDetailsModal";
 import axios from "axios";
 import { AuthContext } from "../context/AuthContext";
 import ChatHistoryButton from "./ChatHistoryButton";
@@ -784,13 +784,13 @@ useEffect(() => {
         </View>
       </KeyboardAvoidingView>
 
-      <PetDetailsModal
+      {/* <PetDetailsModal
         visible={showPetModal}
         onComplete={() => setShowPetModal(false)}
         updateUser={updateUser}
         token={token}
         user={user}
-      />
+      /> */}
     </SafeAreaView>
   );
 };

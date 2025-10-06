@@ -1,6 +1,12 @@
-import axios from 'axios';
-import React, { createContext, useState, useEffect, useContext, useCallback } from "react";
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from "axios";
+import React, {
+  createContext,
+  useState,
+  useEffect,
+  useContext,
+  useCallback,
+} from "react";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 export const AuthContext = createContext();
 
@@ -17,7 +23,9 @@ export const AuthProvider = ({ children }) => {
       try {
         const savedToken = await AsyncStorage.getItem("token");
         const savedUser = await AsyncStorage.getItem("user");
-        const savedChatRoomToken = await AsyncStorage.getItem("chat_room_token");
+        const savedChatRoomToken = await AsyncStorage.getItem(
+          "chat_room_token"
+        );
         const savedDoctors = await AsyncStorage.getItem("nearby_doctors");
 
         if (savedToken) setToken(savedToken);
@@ -25,7 +33,7 @@ export const AuthProvider = ({ children }) => {
         if (savedChatRoomToken) setChatRoomToken(savedChatRoomToken);
         if (savedDoctors) setNearbyDoctors(JSON.parse(savedDoctors));
       } catch (error) {
-        console.error('Error loading auth data:', error);
+        console.error("Error loading auth data:", error);
       } finally {
         setLoading(false);
       }
@@ -52,6 +60,19 @@ export const AuthProvider = ({ children }) => {
     }
   }, [token, user?.id]);
 
+const updateUser = async (newUserData) => {
+  try {
+    setUser((prevUser) => {
+      const updatedUser = { ...prevUser, ...newUserData };
+      AsyncStorage.setItem("user", JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  } catch (error) {
+    console.error("Error updating user data:", error);
+  }
+};
+
+
   // 🔹 Login function
   const login = async (userData, jwtToken, initialChatToken = null) => {
     try {
@@ -69,7 +90,7 @@ export const AuthProvider = ({ children }) => {
       // ✅ Fetch nearby doctors after login
       fetchNearbyDoctors();
     } catch (error) {
-      console.error('Error saving auth data:', error);
+      console.error("Error saving auth data:", error);
     }
   };
 
@@ -86,7 +107,7 @@ export const AuthProvider = ({ children }) => {
         return merged;
       });
     } catch (error) {
-      console.error('Error updating nearby doctors:', error);
+      console.error("Error updating nearby doctors:", error);
     }
   };
 
@@ -98,9 +119,14 @@ export const AuthProvider = ({ children }) => {
       setChatRoomToken(null);
       setNearbyDoctors([]);
 
-      await AsyncStorage.multiRemove(["token", "user", "chat_room_token", "nearby_doctors"]);
+      await AsyncStorage.multiRemove([
+        "token",
+        "user",
+        "chat_room_token",
+        "nearby_doctors",
+      ]);
     } catch (error) {
-      console.error('Error during logout:', error);
+      console.error("Error during logout:", error);
     }
   };
 
@@ -110,23 +136,22 @@ export const AuthProvider = ({ children }) => {
     chatRoomToken,
     login,
     logout,
-    fetchNearbyDoctors,  // 🔹 Expose function to call manually if needed
+    fetchNearbyDoctors, // 🔹 Expose function to call manually if needed
     nearbyDoctors,
     updateNearbyDoctors,
     loading,
     isLoggedIn: !!token,
+    updateUser,
   };
 
   return (
-    <AuthContext.Provider value={authValue}>
-      {children}
-    </AuthContext.Provider>
+    <AuthContext.Provider value={authValue}>{children}</AuthContext.Provider>
   );
 };
 
 // 🔹 Hook
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error('useAuth must be used within an AuthProvider');
+  if (!context) throw new Error("useAuth must be used within an AuthProvider");
   return context;
 };
