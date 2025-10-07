@@ -154,46 +154,64 @@
 // };
 
 
+
+
+
 import { io } from "socket.io-client";
-import { Platform } from "react-native";
-import Constants from "expo-constants";
 
-const isDev = __DEV__;
+const SOCKET_URL = __DEV__
+  ? "http://192.168.1.7:4000" 
+  : "https://snoutiq.com";  
 
-const localIp = "192.168.1.7"; 
-const socketUrl = isDev
-  ? `http://${localIp}:4000`
-  : "https://snoutiq.com";
-
-
-console.log("🔧 Socket URL:", socketUrl);
-
-export const socket = io(socketUrl, {
+// -------------------- SOCKET.IO CLIENT --------------------
+export const socket = io(SOCKET_URL, {
+  path: "/socket.io/",
   transports: ["websocket", "polling"],
   reconnection: true,
-  reconnectionAttempts: 5,
-  reconnectionDelay: 2000,
-  reconnectionDelayMax: 10000,
-  timeout: 10000,
-  autoConnect: true,
+  reconnectionDelay: 1000,
+  reconnectionAttempts: 10,
+  timeout: 20000,
   forceNew: true,
 });
 
-// Enhanced error handling
+// -------------------- SOCKET EVENTS --------------------
+// Successfully connected
 socket.on("connect", () => {
-  console.log("✅ Connected to server:", socket.id);
-  console.log("📡 Transport:", socket.io.engine.transport.name);
+  console.log("✅ Socket connected:", socket.id);
+  console.log("🌐 Connected to:", SOCKET_URL);
 });
 
+// Disconnected
 socket.on("disconnect", (reason) => {
-  console.log("❌ Disconnected. Reason:", reason);
+  console.log("❌ Socket disconnected. Reason:", reason);
 });
 
+// Connection error
 socket.on("connect_error", (error) => {
   console.error("❌ Connection error:", error.message);
-  console.error("🔧 Error details:", error);
+  console.error("🔍 Trying to connect to:", SOCKET_URL);
+  console.error("🛠️ Environment:", __DEV__ ? "Development" : "Production");
 });
 
-socket.on("connect_timeout", (timeout) => {
-  console.error("⏰ Connection timeout:", timeout);
+// Reconnection attempts
+socket.on("reconnect_attempt", (attemptNumber) => {
+  console.log("🔄 Reconnection attempt", attemptNumber);
+});
+
+// Successfully reconnected
+socket.on("reconnect", (attemptNumber) => {
+  console.log("🔄 Reconnected after", attemptNumber, "attempts");
+});
+
+// Reconnection failed
+socket.on("reconnect_failed", () => {
+  console.error("❌ Failed to reconnect after max attempts");
+});
+
+// Helper to get connection info
+export const getConnectionInfo = () => ({
+  url: SOCKET_URL,
+  environment: __DEV__ ? "development" : "production",
+  connected: socket.connected,
+  id: socket.id,
 });
