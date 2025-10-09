@@ -36,6 +36,8 @@ import { socket } from "../context/Socket";
 import DoctorAppointmentModal from "../components/DoctorAppointmentModal";
 import ChangePasswordScreen from "../components/ChangePasswordScreen";
 import HelpCenter from "../components/HelpCenterScreen";
+import RatingScreen from "../PetComponent/RatingScreen";
+
 
 const Stack = createNativeStackNavigator();
 
@@ -136,6 +138,7 @@ const MainStack = () => {
       <Stack.Screen name="BookClinicVisit" component={DoctorAppointmentModal} />
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen}/>
       <Stack.Screen name="HelpCenter" component={HelpCenter}/>
+       <Stack.Screen name="RatingScreen" component={RatingScreen} />
     </Stack.Navigator>
   );
 };

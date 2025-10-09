@@ -726,7 +726,6 @@ const ChatHistorySidebar = ({
       setRefreshing(false);
     }
   };
-console.log(history,"his");
 
   // Start new chat
   const handleNewChat = async () => {

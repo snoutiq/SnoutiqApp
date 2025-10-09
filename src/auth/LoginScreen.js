@@ -1776,7 +1776,7 @@ const LoginScreen = () => {
                   const profileKey = userFromApi?.id ? `profileCompleted:${userFromApi.id}` : null;
                   await AsyncStorage.setItem(profileKey, 'true');
                   updateUser({ ...userFromApi, role: "pet", profileCompleted: true });
-                  Alert.alert("Success", "Login successful!");
+                  // Alert.alert("Success", "Login successful!");
                   
                   // Sign out from Google after successful login
                   await GoogleSignin.signOut();

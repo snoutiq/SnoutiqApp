@@ -160,7 +160,7 @@
 import { io } from "socket.io-client";
 
 const SOCKET_URL = __DEV__
-  ? "http://192.168.1.7:4000" 
+  ? "http://10.191.5.171:4000" 
   : "https://snoutiq.com";  
 
 // -------------------- SOCKET.IO CLIENT --------------------

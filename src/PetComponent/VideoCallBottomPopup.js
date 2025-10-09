@@ -22,7 +22,7 @@ const TOKEN = null;
 const { width, height } = Dimensions.get("window");
 
 const VideoCallScreen = ({ route, navigation }) => {
-  const { doctor, channelName, uid: paramUid, role: paramRole } = route.params;
+  const { doctor, channelName, uid: paramUid, role: paramRole,patientId } = route.params;
 
   // Generate UID safely
   const uid = paramUid ? Number(paramUid) : Math.floor(Math.random() * 100000);
@@ -275,11 +275,23 @@ const VideoCallScreen = ({ route, navigation }) => {
     }
   };
 
+  // const endCall = () => {
+  //   console.log("Ending call...");
+  //   cleanup();
+  //   navigation.goBack();
+  // };
+
   const endCall = () => {
-    console.log("Ending call...");
-    cleanup();
-    navigation.goBack();
-  };
+  console.log("Ending call...");
+  cleanup();
+
+  // Navigate to RatingScreen after call ends
+  navigation.navigate("RatingScreen", {
+    doctorId: doctor.id,
+    userId: patientId, // Replace with the actual logged-in user ID
+  });
+};
+
 
   // Render remote video with state handling
   const renderRemoteVideo = () => {

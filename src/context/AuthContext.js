@@ -7,6 +7,8 @@ import React, {
   useCallback,
 } from "react";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { socket } from "./Socket";
+
 
 export const AuthContext = createContext();
 
@@ -41,6 +43,31 @@ export const AuthProvider = ({ children }) => {
 
     loadAuthData();
   }, []);
+  const [liveDoctors, setLiveDoctors] = useState([]);
+
+// Socket listener for live doctors
+useEffect(() => {
+  socket.on("active-doctors", (doctorIds) => {
+    // Filter nearby doctors jo live hain
+    const liveNearbyDoctors = nearbyDoctors.filter(doc => 
+      doctorIds.includes(doc.id)
+    );
+    setLiveDoctors(liveNearbyDoctors);
+  });
+
+  // Request active doctors on mount
+  socket.emit("get-active-doctors");
+
+  // Refresh every 30 seconds
+  const interval = setInterval(() => {
+    socket.emit("get-active-doctors");
+  }, 30000);
+
+  return () => {
+    socket.off("active-doctors");
+    clearInterval(interval);
+  };
+}, [nearbyDoctors]);
 
   // 🔹 Fetch nearby doctors
   const fetchNearbyDoctors = useCallback(async () => {
@@ -142,6 +169,8 @@ const updateUser = async (newUserData) => {
     loading,
     isLoggedIn: !!token,
     updateUser,
+     liveDoctors, // Add this
+  setLiveDoctors,
   };
 
   return (

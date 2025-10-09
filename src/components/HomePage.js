@@ -29,6 +29,8 @@ import { socket } from "../context/Socket";
 import DoctorAppointmentModal from "./DoctorAppointmentModal";
 import ProfileCompletionModalAuto from "../utils/ProfileCompletionModalAuto";
 import axios from "axios";
+import DetailedWeatherWidget from "./DetailedWeatherWidget";
+import LiveDoctorSelectionModal from "./LiveDoctorSelectionModal";
 
 const { width, height } = Dimensions.get("window");
 
@@ -265,29 +267,232 @@ const DoctorSearchModal = memo(({ visible, onClose, onFailure }) => {
 });
 
 // ------------------- StartCallButton -------------------
-const StartCallButton = memo(({ nearbyDoctors, navigation }) => {
-  const [loading, setLoading] = useState(false);
-  const [showSearchModal, setShowSearchModal] = useState(false);
-  const [callStatus, setCallStatus] = useState(null);
+const StartCallButton = memo(({ navigation, onShowLiveDoctors }) => {
   const { liveDoctors } = useContext(AuthContext);
-  const patientId = 101;
+
+  return (
+    <TouchableOpacity
+      style={styles.serviceItem}
+      activeOpacity={0.7}
+      onPress={onShowLiveDoctors}
+      disabled={!liveDoctors?.length}
+    >
+      <LinearGradient
+        colors={
+          !liveDoctors?.length ? ["#D1FAE5", "#A7F3D0"] : ["#FEE2E2", "#FECACA"]
+        }
+        style={styles.serviceIcon}
+      >
+        <View style={styles.buttonContent}>
+          {!liveDoctors?.length ? (
+            <>
+              <Ionicons name="videocam-off" size={scale(20)} color="#fff" />
+            </>
+          ) : (
+            <>
+              <View style={styles.iconContainer}>
+                <Ionicons name="videocam" size={scale(19)} color="#fff" />
+              </View>
+              <View style={styles.liveIndicator}>
+                <View style={styles.liveDot} />
+              </View>
+            </>
+          )}
+        </View>
+      </LinearGradient>
+      <Text style={styles.serviceTitle} numberOfLines={2}>
+        Video Consultation
+      </Text>
+      {liveDoctors?.length > 0 ? (
+        <View style={styles.infoRow}>
+          <Text style={styles.liveText} numberOfLines={1}>
+            {liveDoctors.length} Doctor{liveDoctors.length > 1 ? "s" : ""} Live
+          </Text>
+        </View>
+      ) : (
+        <Text style={styles.serviceSubtitle} numberOfLines={1}>
+          Check availability
+        </Text>
+      )}
+    </TouchableOpacity>
+  );
+});
+
+// ------------------- TrustBadge Component -------------------
+const TrustBadge = memo(() => {
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
-  const timeoutRef = useRef(null);
-  const glowAnimationRef = useRef(null);
+  const fadeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    if (liveDoctors?.length > 0 && glowAnimationRef.current) {
-      glowAnimationRef.current.start();
-    }
+    Animated.sequence([
+      Animated.delay(1000),
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 800,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  }, []);
 
-    return () => {
-      if (glowAnimationRef.current) {
-        glowAnimationRef.current.stop();
+  const handlePressIn = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 0.95,
+      tension: 300,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.spring(scaleAnim, {
+      toValue: 1,
+      tension: 300,
+      friction: 10,
+      useNativeDriver: true,
+    }).start();
+  };
+
+  return (
+    <Animated.View 
+      style={[
+        styles.trustBadgeContainer,
+        { 
+          opacity: fadeAnim,
+          transform: [{ scale: scaleAnim }]
+        }
+      ]}
+    >
+      <TouchableOpacity
+        style={styles.trustBadge}
+        activeOpacity={0.9}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        <LinearGradient
+          colors={["#F8FAFC", "#FFFFFF"]}
+          style={styles.trustBadgeGradient}
+          start={{ x: 0, y: 0 }}
+          end={{ x: 1, y: 1 }}
+        >
+          <View style={styles.trustBadgeContent}>
+            <View style={styles.trustIconsRow}>
+              <View style={styles.trustIcon}>
+                <Ionicons name="shield-checkmark" size={scale(16)} color="#10B981" />
+              </View>
+              <View style={styles.trustIcon}>
+                <Ionicons name="heart" size={scale(16)} color="#EC4899" />
+              </View>
+              <View style={styles.trustIcon}>
+                <Ionicons name="star" size={scale(16)} color="#F59E0B" />
+              </View>
+            </View>
+            
+            <Text style={styles.trustTitle}>Trusted by Pet Parents</Text>
+            
+            <View style={styles.trustStats}>
+              <View style={styles.trustStatItem}>
+                <Text style={styles.trustStatNumber}>100+</Text>
+                <Text style={styles.trustStatLabel}>Happy Pets</Text>
+              </View>
+              
+              <View style={styles.trustStatDivider} />
+              
+              <View style={styles.trustStatItem}>
+                <Text style={styles.trustStatNumber}>50+</Text>
+                <Text style={styles.trustStatLabel}>Expert Vets</Text>
+              </View>
+              
+              <View style={styles.trustStatDivider} />
+              
+              <View style={styles.trustStatItem}>
+                <Text style={styles.trustStatNumber}>24/7</Text>
+                <Text style={styles.trustStatLabel}>Support</Text>
+              </View>
+            </View>
+            
+            <View style={styles.trustFooter}>
+              <Ionicons name="ribbon" size={scale(12)} color="#6B7280" />
+              <Text style={styles.trustFooterText}>
+                Join 100+ trusted pet parents community
+              </Text>
+            </View>
+          </View>
+        </LinearGradient>
+        
+        {/* Floating elements for visual appeal */}
+        <View style={styles.floatingElement1} />
+        <View style={styles.floatingElement2} />
+        <View style={styles.floatingElement3} />
+      </TouchableOpacity>
+    </Animated.View>
+  );
+});
+
+// ------------------- HomeScreen -------------------
+export default function HomeScreen({ navigation }) {
+  const { user, token, updateNearbyDoctors, liveDoctors } = useContext(AuthContext);
+  const [inputMessage, setInputMessage] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
+  const [nearbyDoctors, setNearbyDoctors] = useState([]);
+  const [showPetModal, setShowPetModal] = useState(false);
+  const [showLiveDoctorsModal, setShowLiveDoctorsModal] = useState(false);
+  const [showSearchModal, setShowSearchModal] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [callStatus, setCallStatus] = useState(null);
+  
+  const { updateUser } = useContext(AuthContext);
+  const timeoutRef = useRef(null);
+  
+  const fetchNearbyDoctors = useCallback(async () => {
+    if (!token || !user?.id) return;
+
+    try {
+      const response = await axios.get(
+        `https://snoutiq.com/backend/api/nearby-vets?user_id=${user.id}`,
+        { headers: { Authorization: `Bearer ${token}` } }
+      );
+
+      if (response.data && Array.isArray(response.data.data)) {
+        updateNearbyDoctors(response.data.data);
+        setNearbyDoctors(response.data.data);
       }
-    };
-  }, [liveDoctors?.length]);
+    } catch (error) {
+      console.error("Failed to fetch nearby doctors", error);
+    }
+  }, [token, user?.id, updateNearbyDoctors]);
+  // console.log(nearbyDoctors,"ankit");
+  
+  
+  useEffect(() => {
+    if (!token || !user?.id) return;
 
+    const fetchData = async () => {
+      await fetchNearbyDoctors();
+    };
+
+    fetchData();
+    const interval = setInterval(fetchData, 5 * 60 * 1000);
+
+    return () => clearInterval(interval);
+  }, [token, user?.id, fetchNearbyDoctors]);
+
+  useEffect(() => {
+    if (user) {
+      const hasPetData =
+        user.pet_name && user.pet_gender && user.breed && user.pet_age;
+
+      if (!hasPetData) {
+        setShowPetModal(true);
+      } else {
+        setShowPetModal(false);
+      }
+    } else {
+      setShowPetModal(false);
+    }
+  }, [user]);
+
+  // Socket listeners for call handling
   useEffect(() => {
     socket.emit("get-active-doctors");
 
@@ -301,6 +506,7 @@ const StartCallButton = memo(({ nearbyDoctors, navigation }) => {
       setShowSearchModal(false);
 
       const doctor = nearbyDoctors.find((d) => d.id === data.doctorId);
+      const patientId = user?.id || "101";
 
       if (data.requiresPayment) {
         navigation.navigate("PaymentScreen", {
@@ -352,7 +558,7 @@ const StartCallButton = memo(({ nearbyDoctors, navigation }) => {
       socket.off("call-rejected", handleCallRejected);
       if (timeoutRef.current) clearTimeout(timeoutRef.current);
     };
-  }, [nearbyDoctors, navigation]);
+  }, [nearbyDoctors, navigation, user]);
 
   const handleNoResponse = () => {
     setLoading(false);
@@ -376,187 +582,30 @@ const StartCallButton = memo(({ nearbyDoctors, navigation }) => {
     );
   };
 
-  const startCall = () => {
-    if (!nearbyDoctors?.length) {
-      return Alert.alert(
-        "No Doctors Available",
-        "There are no nearby veterinarians available at the moment."
-      );
-    }
-
-    Animated.sequence([
-      Animated.spring(scaleAnim, {
-        toValue: 0.95,
-        tension: 300,
-        friction: 10,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 300,
-        friction: 10,
-        useNativeDriver: true,
-      }),
-    ]).start();
-
-    setLoading(true);
-    setShowSearchModal(true);
-
-    const callId = `call_${Date.now()}_${Math.random()
-      .toString(36)
-      .substring(2, 8)}`;
+  const handleCallDoctor = (doctor) => {
+    const callId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const channel = `channel_${callId}`;
+    const patientId = user?.id || "101";
 
-    nearbyDoctors.forEach((doc) => {
-      socket.emit("call-requested", {
-        doctorId: doc.id,
-        patientId,
-        channel,
-        callId,
-        timestamp: new Date().toISOString(),
-      });
+    socket.emit("call-requested", {
+      doctorId: doctor.id,
+      patientId,
+      channel,
+      callId,
+      timestamp: new Date().toISOString(),
     });
 
+    setShowLiveDoctorsModal(false);
+    setShowSearchModal(true);
+    setLoading(true);
+
+    // Set timeout for no response
     timeoutRef.current = setTimeout(() => {
       if (loading && !callStatus) {
         handleNoResponse();
       }
     }, 30000);
   };
-
-  const buttonDisabled = !nearbyDoctors?.length || loading;
-
-  const glowOpacity = glowAnim.interpolate({
-    inputRange: [0, 1],
-    outputRange: [0.3, 0.7],
-  });
-
-  return (
-    <>
-      <View>
-        <TouchableOpacity
-          style={styles.serviceItem}
-          activeOpacity={0.7}
-          onPress={startCall}
-          disabled={buttonDisabled}
-        >
-          <LinearGradient
-            colors={
-              buttonDisabled ? ["#D1FAE5", "#A7F3D0"] : ["#FEE2E2", "#FECACA"]
-            }
-            style={styles.serviceIcon}
-          >
-            <Animated.View
-              style={[
-                styles.glowEffect,
-                { opacity: glowOpacity },
-                (buttonDisabled || !liveDoctors?.length) && { opacity: 0 },
-              ]}
-            />
-            <View style={styles.buttonContent}>
-              {buttonDisabled ? (
-                <>
-                  <Ionicons name="videocam-off" size={scale(20)} color="#fff" />
-                  <Text style={styles.callButtonText} numberOfLines={2}>
-                    No doctors available
-                  </Text>
-                </>
-              ) : (
-                <>
-                  <View style={styles.iconContainer}>
-                    <Ionicons name="videocam" size={scale(19)} color="#fff" />
-                  </View>
-                  {liveDoctors?.length > 0 && (
-                    <View style={styles.liveIndicator}>
-                      <View style={styles.liveDot} />
-                    </View>
-                  )}
-                </>
-              )}
-            </View>
-          </LinearGradient>
-          <Text style={styles.serviceTitle} numberOfLines={2}>Video Consultation</Text>
-          {liveDoctors?.length > 0 && !buttonDisabled ? (
-            <View style={styles.infoRow}>
-              <Text style={styles.liveText} numberOfLines={1}>
-                {liveDoctors.length} Doctor{liveDoctors.length > 1 ? "s" : ""}{" "}
-                Live
-              </Text>
-            </View>
-          ) : (
-            <Text style={styles.serviceSubtitle} numberOfLines={1}>Check availability</Text>
-          )}
-        </TouchableOpacity>
-      </View>
-      <DoctorSearchModal
-        visible={showSearchModal}
-        onClose={() => {
-          setShowSearchModal(false);
-          setLoading(false);
-          if (timeoutRef.current) clearTimeout(timeoutRef.current);
-        }}
-        onFailure={handleNoResponse}
-      />
-    </>
-  );
-});
-
-// ------------------- HomeScreen -------------------
-export default function HomeScreen({ navigation }) {
-  const { user, token, updateNearbyDoctors } = useContext(AuthContext);
-  const [inputMessage, setInputMessage] = useState("");
-  const [temperature, setTemperature] = useState("32°C");
-  const [isLoading, setIsLoading] = useState(false);
-  const [showAppointmentModal, setShowAppointmentModal] = useState(false);
-  const { updateUser } = useContext(AuthContext);
-  const [nearbyDoctors, setNearbyDoctors] = useState([]);
-  const [showPetModal, setShowPetModal] = useState(false);
-  
-  const fetchNearbyDoctors = useCallback(async () => {
-    if (!token || !user?.id) return;
-
-    try {
-      const response = await axios.get(
-        `https://snoutiq.com/backend/api/nearby-vets?user_id=${user.id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (response.data && Array.isArray(response.data.data)) {
-        updateNearbyDoctors(response.data.data);
-        setNearbyDoctors(response.data.data);
-      }
-    } catch (error) {
-      console.error("Failed to fetch nearby doctors", error);
-    }
-  }, [token, user?.id, updateNearbyDoctors]);
-  
-  useEffect(() => {
-    if (!token || !user?.id) return;
-
-    const fetchData = async () => {
-      await fetchNearbyDoctors();
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 5 * 60 * 1000);
-
-    return () => clearInterval(interval);
-  }, [token, user?.id, fetchNearbyDoctors]);
-
-  useEffect(() => {
-    if (user) {
-      const hasPetData =
-        user.pet_name && user.pet_gender && user.breed && user.pet_age;
-
-      if (!hasPetData) {
-        setShowPetModal(true);
-      } else {
-        setShowPetModal(false);
-      }
-    } else {
-      setShowPetModal(false);
-    }
-  }, [user]);
 
   const handleSendMessage = async () => {
     if (inputMessage.trim() === "" || isLoading) return;
@@ -608,50 +657,66 @@ export default function HomeScreen({ navigation }) {
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollViewContent}
       >
         <LinearGradient colors={["#7C3AED", "#EC4899"]} style={styles.header}>
           <View style={styles.headerTop}>
             <View style={styles.headerLeft}>
               <Text style={styles.appLogo} numberOfLines={1}>SnoutIQ</Text>
-            </View>
-            <View style={styles.locationInfo}>
-              <Ionicons name="location" size={scale(12)} color="#FFFFFF" />
-              <Text style={styles.locationText} numberOfLines={1}>
-                Gurgaon • <Text style={styles.temperature}>{temperature}</Text>
+              <Text style={styles.welcomeSubtext} numberOfLines={1}>
+                Welcome back, {user?.name?.split(' ')[0] || 'Pet Parent'}!
               </Text>
             </View>
-          </View>
-          <View style={styles.headerBottom}>
-            <View style={styles.petInfo}>
-              <Text style={styles.welcomeText} numberOfLines={2}>
-                {nearbyDoctors.length} AI Vet is ready to serve
-              </Text>
-              <View style={styles.petDetails}>
-                <View style={styles.petDetailItem}>
-                  <Text style={styles.petDetailIcon}>🐕</Text>
-                  <Text style={styles.petDetailText} numberOfLines={1}>
-                    {user?.breed || "Golden Retriever"}
-                  </Text>
-                </View>
-                <View style={styles.petDetailItem}>
-                  <Text style={styles.petDetailIcon}>📅</Text>
-                  <Text style={styles.petDetailText} numberOfLines={1}>
-                    {user?.pet_age || "3"} years
-                  </Text>
-                </View>
-                <View style={styles.petDetailItem}>
-                  <Text style={styles.petDetailIcon}>⚤</Text>
-                  <Text style={styles.petDetailText} numberOfLines={1}>
-                    {user?.pet_gender || "Male"}
-                  </Text>
-                </View>
-              </View>
-            </View>
-            <View style={styles.userAvatar}>
+            <TouchableOpacity 
+              style={styles.userAvatar}
+              activeOpacity={0.8}
+            >
               <Text style={styles.userAvatarText}>
                 {user?.name ? user.name.substring(0, 2).toUpperCase() : "SP"}
               </Text>
+            </TouchableOpacity>
+          </View>
+
+          {/* Pet Info Card */}
+          <View style={styles.petInfoCard}>
+            <View style={styles.petCardLeft}>
+              <View style={styles.petAvatarContainer}>
+                <Text style={styles.petAvatarEmoji}>🐕</Text>
+                <View style={styles.petStatusDot} />
+              </View>
+              <View style={styles.petCardInfo}>
+                <Text style={styles.petName} numberOfLines={1}>
+                  {user?.pet_name || "Max"}
+                </Text>
+                <Text style={styles.petBreed} numberOfLines={1}>
+                  {user?.breed || "Golden Retriever"}
+                </Text>
+              </View>
             </View>
+            <View style={styles.petCardRight}>
+              <View style={styles.petStatItem}>
+                <Text style={styles.petStatLabel}>Age</Text>
+                <Text style={styles.petStatValue}>{user?.pet_age || "3"}y</Text>
+              </View>
+              <View style={styles.petStatDivider} />
+              <View style={styles.petStatItem}>
+                <Text style={styles.petStatLabel}>Gender</Text>
+                <Text style={styles.petStatValue}>
+                  {user?.pet_gender === "Male" ? "♂" : user?.pet_gender === "Female" ? "♀" : "⚤"}
+                </Text>
+              </View>
+            </View>
+          </View>
+
+          {/* Location & Weather */}
+          <View style={styles.locationWeatherRow}>
+            <View style={styles.locationTag}>
+              <Ionicons name="location" size={scale(14)} color="#FFFFFF" />
+              <Text style={styles.locationTagText} numberOfLines={1}>
+                {user?.city || "Gurugram"}
+              </Text>
+            </View>
+            <DetailedWeatherWidget />
           </View>
         </LinearGradient>
 
@@ -695,8 +760,8 @@ export default function HomeScreen({ navigation }) {
         <View style={styles.servicesSection}>
           <View style={styles.servicesGrid}>
             <StartCallButton
-              nearbyDoctors={nearbyDoctors}
               navigation={navigation}
+              onShowLiveDoctors={() => setShowLiveDoctorsModal(true)}
             />
             <TouchableOpacity
               style={styles.serviceItem}
@@ -743,13 +808,35 @@ export default function HomeScreen({ navigation }) {
           </View>
         </View>
 
-        <View style={{ height: SPACING.xxl * 4 }} />
+        {/* Trust Badge Section */}
+        <TrustBadge />
+
+        <View style={{ height: SPACING.xxl * 2 }} />
       </ScrollView>
 
+      {/* Modals */}
       <DoctorAppointmentModal
         visible={showAppointmentModal}
         onClose={() => setShowAppointmentModal(false)}
         onBook={handleAppointmentBooked}
+      />
+
+      <LiveDoctorSelectionModal
+        visible={showLiveDoctorsModal}
+        onClose={() => setShowLiveDoctorsModal(false)}
+        liveDoctors={liveDoctors}
+        onCallDoctor={handleCallDoctor}
+        loading={loading}
+      />
+
+      <DoctorSearchModal
+        visible={showSearchModal}
+        onClose={() => {
+          setShowSearchModal(false);
+          setLoading(false);
+          if (timeoutRef.current) clearTimeout(timeoutRef.current);
+        }}
+        onFailure={handleNoResponse}
       />
     </SafeAreaView>
   );
@@ -763,12 +850,14 @@ const styles = StyleSheet.create({
   scrollView: {
     flex: 1,
   },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: SPACING.xxl,
+  },
   header: {
     paddingHorizontal: SPACING.lg,
-    paddingTop: Platform.OS === "ios" ? SPACING.xxl * 2 : SPACING.lg,
-    paddingBottom: SPACING.lg,
-    borderBottomLeftRadius: moderateScale(24),
-    borderBottomRightRadius: moderateScale(24),
+    paddingTop: Platform.OS === "ios" ? SPACING.xl : SPACING.md,
+    paddingBottom: SPACING.md,
   },
   headerTop: {
     flexDirection: "row",
@@ -781,81 +870,196 @@ const styles = StyleSheet.create({
     minWidth: 0,
   },
   appLogo: {
-    fontSize: FONT_SIZES.xxxlarge,
+    fontSize: FONT_SIZES.xxlarge,
     fontWeight: "700",
     color: "#FFFFFF",
+    marginBottom: SPACING.xs / 2,
   },
-  locationInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.xs,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.xs,
-    borderRadius: moderateScale(16),
-    maxWidth: scale(150),
-  },
-  locationText: {
+  welcomeSubtext: {
     fontSize: FONT_SIZES.small,
-    color: "#FFFFFF",
-    flexShrink: 1,
-  },
-  temperature: {
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
-  headerBottom: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "flex-start",
-  },
-  petInfo: {
-    flex: 1,
-    minWidth: 0,
-    marginRight: SPACING.md,
-  },
-  welcomeText: {
-    fontSize: FONT_SIZES.medium,
-    color: "rgba(255, 255, 255, 0.9)",
+    color: "rgba(255, 255, 255, 0.85)",
     fontWeight: "500",
-    marginBottom: SPACING.sm,
-    lineHeight: FONT_SIZES.medium * 1.4,
-  },
-  petDetails: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    gap: SPACING.sm,
-  },
-  petDetailItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.xs,
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    paddingHorizontal: SPACING.sm,
-    paddingVertical: SPACING.xs,
-    borderRadius: moderateScale(12),
-    maxWidth: scale(120),
-  },
-  petDetailIcon: {
-    fontSize: FONT_SIZES.tiny,
-  },
-  petDetailText: {
-    fontSize: FONT_SIZES.small,
-    color: "#FFFFFF",
-    flexShrink: 1,
   },
   userAvatar: {
-    width: scale(40),
-    height: scale(40),
-    backgroundColor: "rgba(255, 255, 255, 0.2)",
-    borderRadius: scale(20),
+    width: scale(48),
+    height: scale(48),
+    backgroundColor: "rgba(255, 255, 255, 0.25)",
+    borderRadius: scale(24),
     alignItems: "center",
     justifyContent: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.3)",
   },
   userAvatarText: {
     fontSize: FONT_SIZES.large,
-    fontWeight: "600",
+    fontWeight: "700",
     color: "#FFFFFF",
+  },
+  petInfoCard: {
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    borderRadius: moderateScale(16),
+    padding: SPACING.lg,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SPACING.md,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  petCardLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    flex: 1,
+    gap: SPACING.md,
+  },
+  petAvatarContainer: {
+    position: "relative",
+  },
+  petAvatarEmoji: {
+    fontSize: scale(40),
+  },
+  petStatusDot: {
+    position: "absolute",
+    bottom: 0,
+    right: 0,
+    width: scale(12),
+    height: scale(12),
+    borderRadius: scale(6),
+    backgroundColor: "#10B981",
+    borderWidth: 2,
+    borderColor: "#FFFFFF",
+  },
+  petCardInfo: {
+    flex: 1,
+  },
+  petName: {
+    fontSize: FONT_SIZES.large,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginBottom: SPACING.xs / 2,
+  },
+  petBreed: {
+    fontSize: FONT_SIZES.small,
+    color: "rgba(255, 255, 255, 0.85)",
+    fontWeight: "500",
+  },
+  petCardRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.md,
+  },
+  petStatItem: {
+    alignItems: "center",
+  },
+  petStatLabel: {
+    fontSize: FONT_SIZES.tiny,
+    color: "rgba(255, 255, 255, 0.7)",
+    marginBottom: SPACING.xs / 2,
+    fontWeight: "500",
+  },
+  petStatValue: {
+    fontSize: FONT_SIZES.large,
+    fontWeight: "700",
+    color: "#FFFFFF",
+  },
+  petStatDivider: {
+    width: 1,
+    height: scale(30),
+    backgroundColor: "rgba(255, 255, 255, 0.3)",
+  },
+  locationWeatherRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    gap: SPACING.sm,
+  },
+  locationTag: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.xs,
+    backgroundColor: "rgba(255, 255, 255, 0.15)",
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.xs,
+    borderRadius: moderateScale(20),
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.2)",
+  },
+  locationTagText: {
+    fontSize: FONT_SIZES.small,
+    color: "#FFFFFF",
+    fontWeight: "600",
+  },
+  sliderWrapper: {
+    marginTop: -moderateScale(5),
+    marginBottom: SPACING.md,
+    paddingHorizontal: SPACING.lg,
+  },
+  sliderContainer: {
+    borderRadius: moderateScale(16),
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.1,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  slide: {
+    width: width - SPACING.lg * 2,
+    height: verticalScale(120),
+  },
+  slideGradient: {
+    flex: 1,
+    borderRadius: moderateScale(16),
+    padding: SPACING.lg,
+    justifyContent: "center",
+  },
+  slideContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.lg,
+  },
+  slideIconContainer: {
+    width: scale(56),
+    height: scale(56),
+    borderRadius: moderateScale(28),
+    backgroundColor: "rgba(255, 255, 255, 0.2)",
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "rgba(255, 255, 255, 0.3)",
+  },
+  slideTextContainer: {
+    flex: 1,
+  },
+  slideTitle: {
+    fontSize: FONT_SIZES.large,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginBottom: SPACING.xs,
+  },
+  slideSubtitle: {
+    fontSize: FONT_SIZES.small,
+    color: "rgba(255, 255, 255, 0.9)",
+    fontWeight: "500",
+  },
+  pagination: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    gap: SPACING.xs,
+    position: "absolute",
+    bottom: SPACING.sm,
+    alignSelf: "center",
+  },
+  paginationDot: {
+    width: scale(6),
+    height: scale(6),
+    borderRadius: scale(3),
+    backgroundColor: "rgba(255, 255, 255, 0.5)",
+  },
+  paginationDotActive: {
+    width: scale(20),
+    backgroundColor: "#FFFFFF",
   },
   aiSearchSection: {
     backgroundColor: "#FFFFFF",
@@ -1024,6 +1228,124 @@ const styles = StyleSheet.create({
     color: "#10B981",
     fontWeight: "700",
     fontSize: moderateScale(11),
+  },
+  // Trust Badge Styles
+  trustBadgeContainer: {
+    marginHorizontal: SPACING.lg,
+    marginTop: SPACING.xl,
+    marginBottom: SPACING.md,
+  },
+  trustBadge: {
+    borderRadius: moderateScale(20),
+    overflow: "hidden",
+    position: "relative",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.1,
+    shadowRadius: 16,
+    elevation: 8,
+  },
+  trustBadgeGradient: {
+    padding: SPACING.lg,
+    borderWidth: 1,
+    borderColor: "rgba(255, 255, 255, 0.5)",
+  },
+  trustBadgeContent: {
+    alignItems: "center",
+  },
+  trustIconsRow: {
+    flexDirection: "row",
+    gap: SPACING.sm,
+    marginBottom: SPACING.md,
+  },
+  trustIcon: {
+    width: scale(32),
+    height: scale(32),
+    borderRadius: scale(16),
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    justifyContent: "center",
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  trustTitle: {
+    fontSize: FONT_SIZES.large,
+    fontWeight: "700",
+    color: "#1F2937",
+    marginBottom: SPACING.lg,
+    textAlign: "center",
+  },
+  trustStats: {
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
+    width: "100%",
+    marginBottom: SPACING.lg,
+  },
+  trustStatItem: {
+    alignItems: "center",
+    flex: 1,
+  },
+  trustStatNumber: {
+    fontSize: FONT_SIZES.xlarge,
+    fontWeight: "800",
+    color: "#7C3AED",
+    marginBottom: SPACING.xs / 2,
+  },
+  trustStatLabel: {
+    fontSize: FONT_SIZES.tiny,
+    color: "#6B7280",
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  trustStatDivider: {
+    width: 1,
+    height: scale(30),
+    backgroundColor: "#E5E7EB",
+  },
+  trustFooter: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SPACING.xs,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: SPACING.sm,
+    backgroundColor: "rgba(124, 58, 237, 0.05)",
+    borderRadius: moderateScale(12),
+  },
+  trustFooterText: {
+    fontSize: FONT_SIZES.small,
+    color: "#6B7280",
+    fontWeight: "500",
+  },
+  floatingElement1: {
+    position: "absolute",
+    top: -10,
+    right: 20,
+    width: scale(20),
+    height: scale(20),
+    borderRadius: scale(10),
+    backgroundColor: "rgba(236, 72, 153, 0.1)",
+  },
+  floatingElement2: {
+    position: "absolute",
+    bottom: 15,
+    left: 15,
+    width: scale(15),
+    height: scale(15),
+    borderRadius: scale(7.5),
+    backgroundColor: "rgba(16, 185, 129, 0.1)",
+  },
+  floatingElement3: {
+    position: "absolute",
+    top: 30,
+    left: -5,
+    width: scale(12),
+    height: scale(12),
+    borderRadius: scale(6),
+    backgroundColor: "rgba(59, 130, 246, 0.1)",
   },
   modalOverlay: {
     flex: 1,
