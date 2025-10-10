@@ -24,7 +24,6 @@ const DetailedWeatherWidget = () => {
         setError("Unable to fetch weather data");
       }
     } catch (err) {
-      console.error("Weather fetch error:", err);
       setError("Failed to load weather");
     } finally {
       setLoading(false);

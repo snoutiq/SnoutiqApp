@@ -217,9 +217,7 @@ const EditPetProfile = ({ navigation, route }) => {
     }
 
     try {
-      setIsLoading(true);
-      console.log(`Fetching individual pet data for pet ID: ${petId}`);
-      
+      setIsLoading(true);      
       const response = await axios.get(`${API_BASE_URL}/pets/${petId}`, {
         timeout: 15000,
         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -241,12 +239,10 @@ const EditPetProfile = ({ navigation, route }) => {
           avatar: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=150&h=150&fit=crop"
         });
         
-        console.log('Pet data loaded successfully:', pet.name);
       } else {
         throw new Error('Failed to fetch individual pet data');
       }
     } catch (error) {
-      console.error('Error fetching individual pet data:', error);
       Alert.alert("Error", "Failed to load pet data from server");
     } finally {
       setIsLoading(false);
@@ -256,15 +252,12 @@ const EditPetProfile = ({ navigation, route }) => {
   // Fetch pets from API
   const fetchPetsFromAPI = async () => {
     if (!userId) {
-      console.warn('User ID not available');
       Alert.alert("Error", "User not authenticated. Please login again.");
       return;
     }
 
     try {
-      setIsLoading(true);
-      console.log(`Fetching pets for user ${userId}...`);
-      
+      setIsLoading(true);      
       const response = await axios.get(`${API_BASE_URL}/users/${userId}/pets`, {
         timeout: 15000,
         headers: token ? { Authorization: `Bearer ${token}` } : {}
@@ -293,7 +286,6 @@ const EditPetProfile = ({ navigation, route }) => {
         throw new Error('Failed to fetch pets from API');
       }
     } catch (error) {
-      console.error('Error fetching pets from API:', error);
       Alert.alert("Error", "Failed to load pet data from server");
     } finally {
       setIsLoading(false);
@@ -315,7 +307,6 @@ const EditPetProfile = ({ navigation, route }) => {
   };
 
   const fetchDogBreeds = async (retryCount = 3, delay = 1000) => {
-    console.log('🚀 Starting fetchDogBreeds...');
     try {
       setLoadingBreeds(true);
       const response = await axios.get("https://snoutiq.com/backend/api/dog-breeds/all", {
@@ -356,9 +347,7 @@ const EditPetProfile = ({ navigation, route }) => {
         );
         
         setDogBreeds(breeds);
-        console.log(`🐕 Successfully loaded ${breeds.length} dog breeds`);
       } else {
-        console.error('❌ Invalid API response structure:', response.data);
         throw new Error('Invalid API response structure');
       }
     } catch (error) {
@@ -370,7 +359,6 @@ const EditPetProfile = ({ navigation, route }) => {
       });
       
       if (retryCount > 0) {
-        console.log(`🔄 Retrying fetchDogBreeds (${retryCount} attempts left)...`);
         await new Promise(resolve => setTimeout(resolve, delay));
         return fetchDogBreeds(retryCount - 1, delay * 2);
       }
@@ -386,7 +374,6 @@ const EditPetProfile = ({ navigation, route }) => {
       );
     } finally {
       setLoadingBreeds(false);
-      console.log('🏁 fetchDogBreeds completed');
     }
   };
 
@@ -514,7 +501,6 @@ const EditPetProfile = ({ navigation, route }) => {
         throw new Error('Failed to update pet');
       }
     } catch (error) {
-      console.error('Error saving pet data:', error);
       Alert.alert("Error", "Failed to save pet data to server");
     } finally {
       setIsSaving(false);
@@ -570,7 +556,6 @@ const EditPetProfile = ({ navigation, route }) => {
         throw new Error('Failed to add pet');
       }
     } catch (error) {
-      console.error('Error adding pet:', error);
       Alert.alert("Error", "Failed to add pet to server");
     } finally {
       setIsSaving(false);
@@ -604,7 +589,6 @@ const EditPetProfile = ({ navigation, route }) => {
                 throw new Error('Failed to delete pet');
               }
             } catch (error) {
-              console.error('Error deleting pet:', error);
               Alert.alert("Error", "Failed to delete pet from server");
             }
           }

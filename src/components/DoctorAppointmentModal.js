@@ -313,7 +313,6 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
         throw new Error(data.message || "Failed to book appointment");
       }
     } catch (error) {
-      console.error("Error in payment success handling:", error);
       Alert.alert(
         "Booking Issue",
         error.message || "Something went wrong",
@@ -325,7 +324,6 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
   };
 
   const handlePaymentFailure = (error) => {
-    console.log("Payment error:", error);
     Alert.alert(
       "Payment Failed",
       "We couldn't process your payment. Please try again or use a different payment method.",
@@ -1479,7 +1477,7 @@ const styles = StyleSheet.create({
   paymentScrollContent: {
     paddingBottom: SPACING.xl,
   },
-  
+
 });
 
 export default DoctorAppointmentModal;

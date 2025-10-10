@@ -163,7 +163,6 @@ const PetDetailsModal = ({ visible, onComplete, updateUser, token, user }) => {
         throw new Error('Failed to update pet details');
       }
     } catch (error) {
-      console.error('Error updating pet details:', error);
       Alert.alert('Error', 'Failed to update pet details. Please try again.');
     } finally {
       setLoading(false);

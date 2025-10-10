@@ -16,6 +16,7 @@ import Chat from "../components/Chat";
 import CommunityScreen from "../components/CommunityScreen";
 import ProfileScreen from "../components/ProfileScreen";
 import PetServices from "../components/PetServices";
+import AppointmentScreen from "../components/AppointmentScreen";
 
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get("window");
@@ -82,21 +83,21 @@ export default function MainTabNavigator() {
         label: "Chat",
         gradient: ["#4ECDC4", "#88D3CE"],
       },
-      Social: {
-        icon: focused ? "share-social" : "share-social-outline",
-        label: "Social",
-        gradient: ["#45B7D1", "#7EC8E3"],
-      },
-      // Community: {
-      //   icon: focused ? "people" : "people-outline",
-      //   label: "Community",
-      //   gradient: ["#96CEB4", "#B2D8B2"]
+      // Social: {
+      //   icon: focused ? "share-social" : "share-social-outline",
+      //   label: "Social",
+      //   gradient: ["#45B7D1", "#7EC8E3"],
       // },
-      PetServices: {
+      AppointmentScreen: {
         icon: focused ? "people" : "people-outline",
-        label: "PetServices",
-        gradient: ["#96CEB4", "#B2D8B2"],
+        label: "AppointmentScreen",
+        gradient: ["#96CEB4", "#B2D8B2"]
       },
+      // PetServices: {
+      //   icon: focused ? "people" : "people-outline",
+      //   label: "PetServices",
+      //   gradient: ["#96CEB4", "#B2D8B2"],
+      // },
       Profile: {
         icon: focused ? "person" : "person-outline",
         label: "Profile",
@@ -206,7 +207,7 @@ export default function MainTabNavigator() {
           ),
         }}
       />
-      <Tab.Screen
+      {/* <Tab.Screen
         name="Social"
         component={SocialMedia}
         options={{
@@ -224,10 +225,10 @@ export default function MainTabNavigator() {
             </View>
           ),
         }}
-      />
-      {/* <Tab.Screen 
-        name="Community" 
-        component={CommunityScreen}
+      /> */}
+      <Tab.Screen 
+        name="AppointmentScreen" 
+        component={AppointmentScreen}
         options={{
           tabBarLabel: ({ focused }) => (
             <View style={styles.labelContainer}>
@@ -238,13 +239,13 @@ export default function MainTabNavigator() {
                   focused && { color: "#96CEB4" }
                 ]}
               >
-                Community
+                Appointment
               </Animated.Text>
             </View>
           )
         }}
-      /> */}
-      <Tab.Screen
+      />
+      {/* <Tab.Screen
         name="PetServices"
         component={PetServices}
         options={{
@@ -262,7 +263,7 @@ export default function MainTabNavigator() {
             </View>
           ),
         }}
-      />
+      /> */}
       <Tab.Screen
         name="Profile"
         component={ProfileScreen}

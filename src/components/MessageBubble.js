@@ -1,11 +1,4 @@
-import React, {
-  useState,
-  useEffect,
-  useRef,
-  memo,
-  useContext,
-  useCallback,
-} from "react";
+import React, { useState, useEffect, useRef, memo ,useContext,useCallback} from "react";
 import {
   View,
   Text,
@@ -16,8 +9,7 @@ import {
   ActivityIndicator,
   Modal,
   Dimensions,
-  Platform,
-  ScrollView,
+  Platform,ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { moderateScale, verticalScale, scale } from "react-native-size-matters";
@@ -26,12 +18,13 @@ import { BlurView } from "expo-blur";
 import { socket } from "../context/Socket";
 import DoctorAppointmentModal from "./DoctorAppointmentModal";
 import { AuthContext } from "../context/AuthContext";
-import axios from "axios";
 import LiveDoctorSelectionModal from "./LiveDoctorSelectionModal";
+import axios from "axios";
 
-const { width, height } = Dimensions.get("window");
 
-// Enhanced responsive constants
+const { width } = Dimensions.get("window");
+
+// Responsive constants
 const FONT_SIZES = {
   tiny: moderateScale(10),
   small: moderateScale(12),
@@ -51,7 +44,7 @@ const SPACING = {
   xxl: moderateScale(24),
 };
 
-// Enhanced DoctorSearchModal with better UX
+// ------------------- DoctorSearchModal -------------------
 const DoctorSearchModal = memo(({ visible, onClose, onFailure, searchTime = 30000 }) => {
   const [dots, setDots] = useState("");
   const [elapsedTime, setElapsedTime] = useState(0);
@@ -354,7 +347,7 @@ const StartCallButton = memo(({ navigation, onShowLiveDoctors }) => {
         `https://snoutiq.com/backend/api/nearby-vets?user_id=${user.id}`,
         { 
           headers: { Authorization: `Bearer ${token}` },
-          timeout: 10000 // 10 second timeout
+          // timeout: 100 // 10 second timeout
         }
       );
 
@@ -782,14 +775,13 @@ const StartCallButton = memo(({ navigation, onShowLiveDoctors }) => {
   );
 });
 
-// Enhanced EmergencyStatusBox with better animations and UX
+// ------------------- EmergencyStatusBox -------------------
 const EmergencyStatusBox = memo(
   ({ decision, nearbyDoctors, navigation, messageId, isTypingComplete }) => {
     const slideAnim = useRef(new Animated.Value(50)).current;
     const fadeAnim = useRef(new Animated.Value(0)).current;
     const scaleAnim = useRef(new Animated.Value(0.9)).current;
     const [showAppointmentModal, setShowAppointmentModal] = useState(false);
-    const [showLiveDoctorsModal, setShowLiveDoctorsModal] = useState(false);
 
     useEffect(() => {
       if (decision && isTypingComplete) {
@@ -797,7 +789,7 @@ const EmergencyStatusBox = memo(
           Animated.parallel([
             Animated.timing(fadeAnim, {
               toValue: 1,
-              duration: 500,
+              duration: 400,
               useNativeDriver: true,
             }),
             Animated.spring(slideAnim, {
@@ -813,7 +805,7 @@ const EmergencyStatusBox = memo(
               useNativeDriver: true,
             }),
           ]).start();
-        }, 400); // Slightly longer delay for better UX
+        }, 300);
 
         return () => clearTimeout(timer);
       }
@@ -821,7 +813,6 @@ const EmergencyStatusBox = memo(
 
     if (!decision || !isTypingComplete) return null;
 
-    // Enhanced emergency card
     if (decision.includes("EMERGENCY")) {
       return (
         <>
@@ -834,41 +825,32 @@ const EmergencyStatusBox = memo(
               },
             ]}
           >
-            <View style={[styles.actionCard, styles.emergencyCard]}>
+            <View style={styles.actionCard}>
               <LinearGradient
-                colors={["#FEF2F2", "#FEE2E2", "#FECACA"]}
+                colors={["#FEF2F2", "#FEE2E2"]}
                 style={styles.actionGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
               >
                 <View style={styles.actionHeader}>
                   <View style={styles.actionIconWrapper}>
-                    <Animated.View
-                      style={[
-                        styles.pulsatingIcon,
-                        {
-                          transform: [{ scale: scaleAnim }]
-                        }
-                      ]}
+                    <LinearGradient
+                      colors={["#EF4444", "#DC2626"]}
+                      style={styles.actionIcon}
                     >
-                      <LinearGradient
-                        colors={["#EF4444", "#DC2626"]}
-                        style={styles.actionIcon}
-                      >
-                        <Ionicons name="warning" size={scale(24)} color="#FFFFFF" />
-                      </LinearGradient>
-                    </Animated.View>
+                      <Ionicons name="warning" size={scale(24)} color="#FFFFFF" />
+                    </LinearGradient>
                   </View>
                   <View style={styles.actionHeaderText}>
                     <View style={styles.urgentBadge}>
                       <View style={styles.pulseDot} />
-                      <Text style={styles.urgentBadgeText}>URGENT CARE NEEDED</Text>
+                      <Text style={styles.urgentBadgeText}>URGENT</Text>
                     </View>
                     <Text style={styles.actionTitle}>
                       Emergency Care Required
                     </Text>
                     <Text style={styles.actionSubtitle}>
-                      Immediate veterinary attention recommended
+                      Immediate attention needed
                     </Text>
                   </View>
                 </View>
@@ -876,62 +858,25 @@ const EmergencyStatusBox = memo(
                 <View style={styles.warningBox}>
                   <Ionicons name="alert-circle" size={scale(18)} color="#DC2626" />
                   <Text style={styles.actionText}>
-                    Based on the symptoms described, your pet requires immediate medical attention. Please contact a veterinarian right away.
+                    Your pet's symptoms require emergency care. Please contact a
+                    veterinarian immediately.
                   </Text>
                 </View>
 
-                <View style={styles.emergencyActions}>
-                  <TouchableOpacity
-                    style={[styles.primaryButton, styles.emergencyButton]}
-                    onPress={() => setShowAppointmentModal(true)}
-                    activeOpacity={0.8}
+                <TouchableOpacity
+                  style={styles.primaryButton}
+                  onPress={() => setShowAppointmentModal(true)}
+                  activeOpacity={0.8}
+                >
+                  <LinearGradient
+                    colors={["#EF4444", "#DC2626"]}
+                    style={styles.buttonGradient}
                   >
-                    <LinearGradient
-                      colors={["#EF4444", "#DC2626"]}
-                      style={styles.buttonGradient}
-                    >
-                      <Ionicons name="business" size={scale(17)} color="#FFFFFF" />
-                      <Text style={styles.buttonText}>Find Emergency Clinic</Text>
-                    </LinearGradient>
-                  </TouchableOpacity>
-
-                  <TouchableOpacity
-                    style={[styles.secondaryButton, styles.emergencySecondaryButton]}
-                    onPress={() => {
-                      // Direct emergency call functionality
-                      Alert.alert(
-                        "Emergency Contact",
-                        "Would you like to see nearby emergency clinics or contact a veterinarian immediately?",
-                        [
-                          {
-                            text: "See Clinics",
-                            onPress: () => setShowAppointmentModal(true)
-                          },
-                          {
-                            text: "Call Now",
-                            style: "default",
-                            onPress: () => {
-                              // Implement emergency call functionality
-                              console.log("Emergency call initiated");
-                            }
-                          },
-                          {
-                            text: "Cancel",
-                            style: "cancel"
-                          }
-                        ]
-                      );
-                    }}
-                    activeOpacity={0.8}
-                  >
-                    <View style={styles.secondaryButtonContent}>
-                      <Ionicons name="call" size={scale(17)} color="#DC2626" />
-                      <Text style={[styles.secondaryButtonText, styles.emergencySecondaryText]}>
-                        Emergency Contact
-                      </Text>
-                    </View>
-                  </TouchableOpacity>
-                </View>
+                    <Ionicons name="flash" size={scale(17)} color="#FFFFFF" />
+                    <Text style={styles.buttonText}>Find Emergency Clinic</Text>
+                    <Ionicons name="arrow-forward" size={scale(15)} color="#FFFFFF" />
+                  </LinearGradient>
+                </TouchableOpacity>
               </LinearGradient>
             </View>
           </Animated.View>
@@ -940,13 +885,11 @@ const EmergencyStatusBox = memo(
             visible={showAppointmentModal}
             onClose={() => setShowAppointmentModal(false)}
             nearbyDoctors={nearbyDoctors}
-            emergencyMode={true}
             onBook={(appointment) => {
-              console.log("Emergency appointment booked:", appointment);
+              console.log("Appointment booked:", appointment);
               Alert.alert(
-                "Emergency Appointment Confirmed",
-                `Your emergency appointment with ${appointment.doctor.name} has been scheduled. Please proceed to the clinic immediately.`,
-                [{ text: "OK", style: "default" }]
+                "Success",
+                `Appointment with ${appointment.doctor.name} on ${appointment.date} at ${appointment.time} booked!`
               );
               setShowAppointmentModal(false);
             }}
@@ -955,7 +898,6 @@ const EmergencyStatusBox = memo(
       );
     }
 
-    // Enhanced video consultation card
     if (decision.includes("VIDEO_CONSULT")) {
       return (
         <Animated.View
@@ -969,7 +911,7 @@ const EmergencyStatusBox = memo(
         >
           <View style={styles.actionCard}>
             <LinearGradient
-              colors={["#F5F3FF", "#EDE9FE", "#DDD6FE"]}
+              colors={["#F5F3FF", "#EDE9FE"]}
               style={styles.actionGradient}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -984,9 +926,13 @@ const EmergencyStatusBox = memo(
                   </LinearGradient>
                 </View>
                 <View style={styles.actionHeaderText}>
-                  <View style={[styles.urgentBadge, styles.recommendedBadge]}>
+                  <View
+                    style={[styles.urgentBadge, { backgroundColor: "#EDE9FE" }]}
+                  >
                     <Ionicons name="star" size={scale(11)} color="#7C3AED" />
-                    <Text style={[styles.urgentBadgeText, styles.recommendedBadgeText]}>
+                    <Text
+                      style={[styles.urgentBadgeText, { color: "#7C3AED" }]}
+                    >
                       RECOMMENDED
                     </Text>
                   </View>
@@ -994,31 +940,35 @@ const EmergencyStatusBox = memo(
                     Video Consultation
                   </Text>
                   <Text style={[styles.actionSubtitle, { color: "#7C3AED" }]}>
-                    Connect with a veterinarian instantly
+                    Connect with a vet instantly
                   </Text>
                 </View>
               </View>
 
-              <View style={[styles.warningBox, styles.benefitsBox]}>
-                <View style={styles.benefitsList}>
-                  <View style={styles.benefitRow}>
-                    <Ionicons name="checkmark-circle" size={scale(15)} color="#10B981" />
-                    <Text style={styles.benefitText}>Instant consultation within minutes</Text>
-                  </View>
-                  <View style={styles.benefitRow}>
-                    <Ionicons name="checkmark-circle" size={scale(15)} color="#10B981" />
-                    <Text style={styles.benefitText}>Professional medical advice</Text>
-                  </View>
-                  <View style={styles.benefitRow}>
-                    <Ionicons name="checkmark-circle" size={scale(15)} color="#10B981" />
-                    <Text style={styles.benefitText}>Prescriptions if needed</Text>
-                  </View>
+              <View
+                style={[
+                  styles.warningBox,
+                  {
+                    backgroundColor: "rgba(255,255,255,0.9)",
+                    borderColor: "#DDD6FE",
+                  },
+                ]}
+              >
+                <View style={styles.benefitRow}>
+                  <Ionicons name="checkmark-circle" size={scale(15)} color="#10B981" />
+                  <Text style={styles.benefitText}>Instant consultation</Text>
+                </View>
+                <View style={styles.benefitRow}>
+                  <Ionicons name="checkmark-circle" size={scale(15)} color="#10B981" />
+                  <Text style={styles.benefitText}>Professional advice</Text>
                 </View>
               </View>
 
               <StartCallButton
+                nearbyDoctors={nearbyDoctors}
                 navigation={navigation}
-                onShowLiveDoctors={() => setShowLiveDoctorsModal(true)}
+                                onShowLiveDoctors={() => setShowLiveDoctorsModal(true)}
+
               />
             </LinearGradient>
           </View>
@@ -1026,7 +976,6 @@ const EmergencyStatusBox = memo(
       );
     }
 
-    // Enhanced in-clinic card
     if (decision.includes("IN_CLINIC")) {
       return (
         <>
@@ -1041,7 +990,7 @@ const EmergencyStatusBox = memo(
           >
             <View style={styles.actionCard}>
               <LinearGradient
-                colors={["#F8FAFC", "#F1F5F9", "#E2E8F0"]}
+                colors={["#F8FAFC", "#F1F5F9"]}
                 style={styles.actionGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 1 }}
@@ -1060,15 +1009,17 @@ const EmergencyStatusBox = memo(
                       Consultation Options
                     </Text>
                     <Text style={[styles.actionSubtitle, { color: "#6B7280" }]}>
-                      Choose the best option for your pet's needs
+                      Choose video call or clinic visit
                     </Text>
                   </View>
                 </View>
 
                 <View style={styles.optionsContainer}>
                   <StartCallButton
+                    nearbyDoctors={nearbyDoctors}
                     navigation={navigation}
-                    onShowLiveDoctors={() => setShowLiveDoctorsModal(true)}
+                                    onShowLiveDoctors={() => setShowLiveDoctorsModal(true)}
+
                   />
 
                   <View style={styles.divider}>
@@ -1102,9 +1053,8 @@ const EmergencyStatusBox = memo(
             onBook={(appointment) => {
               console.log("Appointment booked:", appointment);
               Alert.alert(
-                "Appointment Confirmed",
-                `Your appointment with ${appointment.doctor.name} on ${appointment.date} at ${appointment.time} has been booked successfully!`,
-                [{ text: "OK", style: "default" }]
+                "Success",
+                `Appointment with ${appointment.doctor.name} on ${appointment.date} at ${appointment.time} booked!`
               );
               setShowAppointmentModal(false);
             }}
@@ -1124,7 +1074,7 @@ const EmergencyStatusBox = memo(
   }
 );
 
-// Enhanced MessageBubble with better typing indicators
+// ------------------- MessageBubble -------------------
 const MessageBubble = memo(
   ({ msg, index, nearbyDoctors, navigation }) => {
     const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -1132,35 +1082,27 @@ const MessageBubble = memo(
     const [isTypingComplete, setIsTypingComplete] = useState(false);
 
     useEffect(() => {
-      const timer = setTimeout(() => {
-        Animated.parallel([
-          Animated.timing(fadeAnim, {
-            toValue: 1,
-            duration: 300,
-            useNativeDriver: true,
-          }),
-          Animated.spring(slideAnim, {
-            toValue: 0,
-            tension: 80,
-            friction: 10,
-            useNativeDriver: true,
-          }),
-        ]).start();
-      }, index * 100); // Staggered animation
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.spring(slideAnim, {
+          toValue: 0,
+          tension: 80,
+          friction: 10,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, []);
 
-      return () => clearTimeout(timer);
-    }, [index]);
-
+    // Check if typing is complete
     useEffect(() => {
       if (msg.sender === "ai" && msg.text && msg.displayedText) {
         if (msg.displayedText.length >= msg.text.length) {
-          const timer = setTimeout(() => {
-            setIsTypingComplete(true);
-          }, 500); // Small delay after typing completes
-          return () => clearTimeout(timer);
+          setIsTypingComplete(true);
         }
-      } else {
-        setIsTypingComplete(true);
       }
     }, [msg.displayedText, msg.text, msg.sender]);
 
@@ -1182,12 +1124,12 @@ const MessageBubble = memo(
 
           <View style={styles.loadingBubble}>
             <View style={styles.loadingHeader}>
-              <Text style={styles.loadingText}>AI analyzing symptoms</Text>
+              <Text style={styles.loadingText}>AI analyzing</Text>
             </View>
             <View style={styles.loadingDots}>
-              <Animated.View style={[styles.dot, styles.dot1]} />
-              <Animated.View style={[styles.dot, styles.dot2]} />
-              <Animated.View style={[styles.dot, styles.dot3]} />
+              <View style={[styles.dot, styles.dot1]} />
+              <View style={[styles.dot, styles.dot2]} />
+              <View style={[styles.dot, styles.dot3]} />
             </View>
           </View>
         </Animated.View>
@@ -1218,7 +1160,6 @@ const MessageBubble = memo(
             style={[
               styles.bubble,
               isUser ? styles.userBubble : styles.aiBubble,
-              !isUser && styles.aiBubbleEnhanced,
             ]}
           >
             <Text
@@ -1232,19 +1173,12 @@ const MessageBubble = memo(
           </View>
 
           {!isUser && (
-            <View style={styles.timestampContainer}>
-              <Text style={styles.timestamp}>
-                {new Date(msg.timestamp).toLocaleTimeString([], {
-                  hour: "2-digit",
-                  minute: "2-digit",
-                })}
-              </Text>
-              {!isTypingComplete && (
-                <View style={styles.typingIndicator}>
-                  <Text style={styles.typingText}>typing</Text>
-                </View>
-              )}
-            </View>
+            <Text style={styles.timestamp}>
+              {new Date(msg.timestamp).toLocaleTimeString([], {
+                hour: "2-digit",
+                minute: "2-digit",
+              })}
+            </Text>
           )}
         </Animated.View>
 
@@ -1264,17 +1198,16 @@ const MessageBubble = memo(
     return (
       prevProps.msg.displayedText === nextProps.msg.displayedText &&
       prevProps.msg.text === nextProps.msg.text &&
-      prevProps.msg.decision === nextProps.msg.decision &&
-      prevProps.index === nextProps.index
+      prevProps.msg.decision === nextProps.msg.decision
     );
   }
 );
 
 export { MessageBubble, StartCallButton, EmergencyStatusBox };
 
-// Enhanced Styles
+// ------------------- Styles -------------------
 const styles = StyleSheet.create({
-  // Enhanced Modal Styles
+  // Modal Styles
   modalOverlay: {
     flex: 1,
     justifyContent: "center",
@@ -1287,7 +1220,6 @@ const styles = StyleSheet.create({
     padding: SPACING.xl,
     width: "100%",
     maxWidth: scale(380),
-    maxHeight: height * 0.85,
     alignItems: "center",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: scale(16) },
@@ -1347,21 +1279,6 @@ const styles = StyleSheet.create({
     textAlign: "center",
     marginBottom: verticalScale(18),
   },
-  timeIndicator: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: SPACING.xs,
-    marginBottom: verticalScale(12),
-    paddingHorizontal: SPACING.md,
-    paddingVertical: verticalScale(6),
-    backgroundColor: "#F5F3FF",
-    borderRadius: moderateScale(8),
-  },
-  timeText: {
-    fontSize: FONT_SIZES.small,
-    color: "#7C3AED",
-    fontWeight: "600",
-  },
   progressBarContainer: {
     width: "100%",
     height: verticalScale(6),
@@ -1379,7 +1296,6 @@ const styles = StyleSheet.create({
   },
   searchingIndicators: {
     width: "100%",
-    maxHeight: verticalScale(200),
     gap: verticalScale(12),
     marginBottom: verticalScale(20),
   },
@@ -1393,10 +1309,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  extendedSearchRow: {
-    borderColor: "#8B5CF6",
-    backgroundColor: "#F5F3FF",
-  },
   indicatorIconContainer: {
     width: scale(36),
     height: scale(36),
@@ -1405,11 +1317,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginRight: SPACING.md,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.1,
-    shadowRadius: 2,
-    elevation: 2,
   },
   indicatorContent: {
     flex: 1,
@@ -1458,57 +1365,31 @@ const styles = StyleSheet.create({
     color: "#92400E",
     fontWeight: "500",
   },
-  buttonContainer: {
-    flexDirection: "row",
-    gap: SPACING.md,
-    width: "100%",
-  },
   cancelButton: {
-    flex: 1,
     paddingVertical: verticalScale(14),
-    paddingHorizontal: scale(16),
+    paddingHorizontal: scale(32),
     borderRadius: moderateScale(12),
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  secondaryButton: {
     backgroundColor: "#F3F4F6",
     borderWidth: 1,
     borderColor: "#E5E7EB",
   },
-  primaryButton: {
-    backgroundColor: "#7C3AED",
-  },
-  secondaryButtonText: {
+  cancelButtonText: {
     fontSize: FONT_SIZES.medium,
     fontWeight: "600",
     color: "#6B7280",
   },
-  primaryButtonText: {
-    fontSize: FONT_SIZES.medium,
-    fontWeight: "600",
-    color: "#FFFFFF",
-  },
 
-  // Enhanced Call Button Styles
+  // Call Button
   callButtonWrapper: {
     marginVertical: verticalScale(12),
   },
   callButton: {
-    borderRadius: moderateScale(16),
+    borderRadius: moderateScale(14),
     overflow: "hidden",
     position: "relative",
-    shadowColor: "#7C3AED",
-    shadowOffset: { width: 0, height: scale(4) },
-    shadowOpacity: 0.3,
-    shadowRadius: scale(8),
-    elevation: 8,
   },
   callButtonDisabled: {
-    opacity: 0.7,
-  },
-  callButtonLoading: {
-    opacity: 0.9,
+    opacity: 0.6,
   },
   glowEffect: {
     position: "absolute",
@@ -1516,7 +1397,7 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
-    borderRadius: moderateScale(16),
+    borderRadius: moderateScale(14),
     backgroundColor: "#7C3AED",
     shadowColor: "#7C3AED",
     shadowOffset: { width: 0, height: 0 },
@@ -1547,30 +1428,21 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.large,
     fontWeight: "700",
     letterSpacing: 0.3,
-    textAlign: "center",
   },
   infoRow: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     gap: SPACING.xs,
-    marginTop: verticalScale(8),
-    paddingHorizontal: SPACING.md,
+    marginTop: verticalScale(10),
   },
   infoText: {
     fontSize: FONT_SIZES.tiny,
     color: "#10B981",
     fontWeight: "600",
-    textAlign: "center",
-  },
-  warningText: {
-    color: "#F59E0B",
-  },
-  errorText: {
-    color: "#EF4444",
   },
 
-  // Enhanced Action Container
+  // Action Container
   actionContainer: {
     marginVertical: verticalScale(12),
     marginHorizontal: SPACING.lg,
@@ -1580,15 +1452,6 @@ const styles = StyleSheet.create({
   actionCard: {
     borderRadius: moderateScale(20),
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: scale(8) },
-    shadowOpacity: 0.1,
-    shadowRadius: scale(16),
-    elevation: 8,
-  },
-  emergencyCard: {
-    borderWidth: 2,
-    borderColor: "#FECACA",
   },
   actionGradient: {
     padding: SPACING.xl,
@@ -1612,11 +1475,6 @@ const styles = StyleSheet.create({
     shadowRadius: scale(8),
     elevation: 6,
   },
-  pulsatingIcon: {
-    width: scale(50),
-    height: scale(50),
-    borderRadius: scale(25),
-  },
   actionIcon: {
     width: "100%",
     height: "100%",
@@ -1637,12 +1495,6 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(6),
     marginBottom: verticalScale(8),
     gap: SPACING.xs,
-  },
-  recommendedBadge: {
-    backgroundColor: "#EDE9FE",
-  },
-  recommendedBadgeText: {
-    color: "#7C3AED",
   },
   pulseDot: {
     width: scale(6),
@@ -1677,14 +1529,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: verticalScale(16),
   },
-  benefitsBox: {
-    backgroundColor: "rgba(255,255,255,0.9)",
-    borderColor: "#DDD6FE",
-  },
-  benefitsList: {
-    flex: 1,
-    gap: verticalScale(6),
-  },
   actionText: {
     flex: 1,
     fontSize: FONT_SIZES.small,
@@ -1696,27 +1540,21 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: SPACING.sm,
+    marginBottom: verticalScale(6),
   },
   benefitText: {
     fontSize: FONT_SIZES.small,
     color: "#1F2937",
     fontWeight: "500",
-    flex: 1,
-  },
-  emergencyActions: {
-    gap: verticalScale(12),
   },
   primaryButton: {
     borderRadius: moderateScale(12),
     overflow: "hidden",
-    shadowColor: "#7C3AED",
+    shadowColor: "#EF4444",
     shadowOffset: { width: 0, height: scale(4) },
     shadowOpacity: 0.3,
     shadowRadius: scale(8),
     elevation: 6,
-  },
-  emergencyButton: {
-    shadowColor: "#EF4444",
   },
   buttonGradient: {
     flexDirection: "row",
@@ -1756,9 +1594,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: "#7C3AED",
   },
-  emergencySecondaryButton: {
-    borderColor: "#DC2626",
-  },
   secondaryButtonContent: {
     flexDirection: "row",
     justifyContent: "center",
@@ -1768,31 +1603,22 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
     backgroundColor: "#F5F3FF",
   },
-  emergencySecondaryContent: {
-    backgroundColor: "#FEF2F2",
-  },
   secondaryButtonText: {
     color: "#7C3AED",
     fontSize: FONT_SIZES.large,
     fontWeight: "700",
   },
-  emergencySecondaryText: {
-    color: "#DC2626",
-  },
 
-  // Enhanced Message Bubble
+  // Message Bubble
   messageContainer: {
     marginVertical: verticalScale(6),
     maxWidth: "85%",
-    flexDirection: "row",
-    alignItems: "flex-end",
   },
   aiMessageContainer: {
     alignSelf: "flex-start",
   },
   userMessageContainer: {
     alignSelf: "flex-end",
-    flexDirection: "row-reverse",
   },
   aiAvatar: {
     width: scale(32),
@@ -1800,7 +1626,7 @@ const styles = StyleSheet.create({
     borderRadius: scale(16),
     justifyContent: "center",
     alignItems: "center",
-    marginRight: SPACING.sm,
+    marginBottom: verticalScale(6),
     shadowColor: "#7C3AED",
     shadowOffset: { width: 0, height: scale(2) },
     shadowOpacity: 0.3,
@@ -1816,7 +1642,6 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.08,
     shadowRadius: scale(4),
     elevation: 2,
-    maxWidth: "100%",
   },
   userBubble: {
     backgroundColor: "#7C3AED",
@@ -1828,10 +1653,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: "#E2E8F0",
   },
-  aiBubbleEnhanced: {
-    borderColor: "#DDD6FE",
-    backgroundColor: "#FAFAFA",
-  },
   bubbleText: {
     fontSize: FONT_SIZES.medium,
     lineHeight: FONT_SIZES.medium * 1.4,
@@ -1842,32 +1663,15 @@ const styles = StyleSheet.create({
   },
   aiText: {
     color: "#1E293B",
-    fontWeight: "400",
-  },
-  timestampContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginLeft: SPACING.xs,
-    gap: SPACING.xs,
   },
   timestamp: {
     fontSize: FONT_SIZES.tiny,
     color: "#94A3B8",
     marginTop: verticalScale(4),
-  },
-  typingIndicator: {
-    backgroundColor: '#F1F5F9',
-    paddingHorizontal: SPACING.xs,
-    paddingVertical: verticalScale(2),
-    borderRadius: moderateScale(4),
-  },
-  typingText: {
-    fontSize: FONT_SIZES.tiny,
-    color: "#64748B",
-    fontStyle: 'italic',
+    marginLeft: SPACING.xs,
   },
 
-  // Enhanced Loading
+  // Loading
   loadingBubble: {
     backgroundColor: "#FFFFFF",
     borderRadius: moderateScale(18),
@@ -1905,3 +1709,4 @@ const styles = StyleSheet.create({
     opacity: 1,
   },
 });
+

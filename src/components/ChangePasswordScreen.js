@@ -364,7 +364,6 @@ const ChangePasswordScreen = ({ navigation, route }) => {
 
   const handleChangePassword = () => {
     if (hasMinLength && hasUppercase && hasSpecialChar && passwordsMatch && oldPassword) {
-      console.log('Password changed successfully!');
       // Add your password change logic here
     } else {
       console.log('Please meet all requirements');

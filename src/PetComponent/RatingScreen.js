@@ -8,18 +8,23 @@ import {
   Alert,
   Modal,
   Dimensions,
+  ActivityIndicator,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 const { width, height } = Dimensions.get("window");
 
 const RatingScreen = ({ route, navigation }) => {
-  const { doctorId, userId } = route.params; // Pass doctorId & userId from VideoCallScreen
+  const { doctorId, userId } = route.params;
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
-  console.log(doctorId, userId);
-  
+  const [visible, setVisible] = useState(true); // modal visible
+
+  const closeModal = () => {
+    setVisible(false);
+    navigation.pop(3);
+  };
 
   const submitRating = async () => {
     if (rating === 0) {
@@ -47,11 +52,9 @@ const RatingScreen = ({ route, navigation }) => {
           { text: "OK", onPress: () => navigation.pop(3) },
         ]);
       } else {
-        console.log(data);
         Alert.alert("Error", data.message || "Failed to submit rating.");
       }
     } catch (error) {
-      console.log(error);
       Alert.alert("Error", "Something went wrong.");
     } finally {
       setSubmitting(false);
@@ -59,97 +62,133 @@ const RatingScreen = ({ route, navigation }) => {
   };
 
   const renderStars = () => {
-    const stars = [];
-    for (let i = 1; i <= 5; i++) {
-      stars.push(
-        <TouchableOpacity key={i} onPress={() => setRating(i)}>
+    return Array.from({ length: 5 }, (_, i) => {
+      const starValue = i + 1;
+      return (
+        <TouchableOpacity
+          key={starValue}
+          onPress={() => setRating(starValue)}
+          activeOpacity={0.7}
+        >
           <Ionicons
-            name={i <= rating ? "star" : "star-outline"}
+            name={starValue <= rating ? "star" : "star-outline"}
             size={40}
-            color="#facc15"
+            color="#FFD700"
             style={{ marginHorizontal: 5 }}
           />
         </TouchableOpacity>
       );
-    }
-    return stars;
+    });
   };
 
   return (
-    <View style={styles.container}>
-      <Text style={styles.title}>Rate Your Doctor</Text>
+    <Modal visible={visible} animationType="fade" transparent>
+      <View style={styles.overlay}>
+        <View style={styles.modalContainer}>
+          {/* Close Button */}
+          <TouchableOpacity style={styles.closeButton} onPress={closeModal}>
+            <Ionicons name="close" size={24} color="#fff" />
+          </TouchableOpacity>
 
-      <Text style={styles.subtitle}>Tap a star to rate</Text>
-      <View style={styles.starsContainer}>{renderStars()}</View>
+          <Text style={styles.title}>Rate Your Doctor</Text>
+          <Text style={styles.subtitle}>Tap a star to rate</Text>
 
-      <TextInput
-        style={styles.commentInput}
-        placeholder="Leave a comment (optional)"
-        placeholderTextColor="#999"
-        multiline
-        value={comment}
-        onChangeText={setComment}
-      />
+          <View style={styles.starsContainer}>{renderStars()}</View>
 
-      <TouchableOpacity
-        style={[styles.submitButton, submitting && { backgroundColor: "#ccc" }]}
-        onPress={submitRating}
-        disabled={submitting}
-      >
-        <Text style={styles.submitButtonText}>
-          {submitting ? "Submitting..." : "Submit Feedback"}
-        </Text>
-      </TouchableOpacity>
-    </View>
+          <TextInput
+            style={styles.commentInput}
+            placeholder="Leave a comment (optional)"
+            placeholderTextColor="#999"
+            multiline
+            value={comment}
+            onChangeText={setComment}
+          />
+
+          <TouchableOpacity
+            style={[
+              styles.submitButton,
+              submitting && { backgroundColor: "#999" },
+            ]}
+            onPress={submitRating}
+            disabled={submitting}
+          >
+            {submitting ? (
+              <ActivityIndicator color="#000" />
+            ) : (
+              <Text style={styles.submitButtonText}>Submit Feedback</Text>
+            )}
+          </TouchableOpacity>
+        </View>
+      </View>
+    </Modal>
   );
 };
 
 export default RatingScreen;
 
 const styles = StyleSheet.create({
-  container: {
+  overlay: {
     flex: 1,
-    padding: 20,
-    backgroundColor: "#111",
+    backgroundColor: "rgba(0,0,0,0.6)",
+    alignItems: "center",
     justifyContent: "center",
   },
+  modalContainer: {
+    width: width * 0.9,
+    backgroundColor: "#1e1e1e",
+    borderRadius: 20,
+    padding: 25,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.3,
+    shadowRadius: 10,
+    elevation: 10,
+  },
+  closeButton: {
+    position: "absolute",
+    right: 15,
+    top: 15,
+    padding: 5,
+    zIndex: 10,
+  },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "bold",
     color: "#fff",
-    textAlign: "center",
-    marginBottom: 10,
+    marginTop: 10,
   },
   subtitle: {
     fontSize: 16,
     color: "#aaa",
-    textAlign: "center",
-    marginBottom: 20,
+    marginVertical: 10,
   },
   starsContainer: {
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: 30,
+    marginBottom: 20,
   },
   commentInput: {
-    height: 100,
-    borderColor: "#444",
+    width: "100%",
+    height: 90,
+    borderColor: "#333",
     borderWidth: 1,
     borderRadius: 10,
     padding: 10,
     color: "#fff",
     textAlignVertical: "top",
-    marginBottom: 30,
+    marginBottom: 20,
+    backgroundColor: "#2a2a2a",
   },
   submitButton: {
-    backgroundColor: "#facc15",
-    paddingVertical: 15,
+    backgroundColor: "#FFD700",
+    paddingVertical: 14,
     borderRadius: 10,
+    width: "100%",
     alignItems: "center",
   },
   submitButtonText: {
     fontSize: 16,
     fontWeight: "bold",
-    color: "#111",
+    color: "#000",
   },
 });

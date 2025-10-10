@@ -1,4 +1,3 @@
-
 import { Ionicons } from '@expo/vector-icons';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useFocusEffect } from '@react-navigation/native';
@@ -25,6 +24,11 @@ const ProfileScreen = ({ navigation }) => {
   const [loading, setLoading] = useState(true);
   const [petsLoading, setPetsLoading] = useState(false);
   const { logout, user } = useAuth();
+  const [stats, setStats] = useState([
+    { label: "Pets", value: "0", color: "#2563EB", icon: "🐾", screen:'' },
+    { label: "Appointments", value: "2", color: "#10B981", icon: "📝", screen:'ProfileAppointment' },
+    { label: "Days Active", value: "0", color: "#F59E0B", icon: "📅", screen:'' },
+  ]);
 
   // Fetch pets from backend API
   const fetchPetsFromAPI = async (userId) => {
@@ -54,9 +58,7 @@ const ProfileScreen = ({ navigation }) => {
           age: pet.pet_age || 0,
           gender: pet.pet_gender || "",
           breed: pet.breed || "Pet",
-          avatar: pet.pet_gender?.toLowerCase() === 'female' 
-            ? "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=80&h=80&fit=crop"
-            : "https://images.unsplash.com/photo-1552053831-71594a27632d?w=80&h=80&fit=crop",
+          avatar: pet.pet_doc1,
           petType: pet.breed?.toLowerCase().includes('cat') ? 'cat' : 'dog',
           created_at: pet.created_at,
           updated_at: pet.updated_at,
@@ -123,9 +125,7 @@ const ProfileScreen = ({ navigation }) => {
               age: user.pet_age,
               gender: user.pet_gender,
               breed: user.breed || "Pet",
-              avatar: user.pet_gender === 'female' 
-                ? "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=80&h=80&fit=crop"
-                : "https://images.unsplash.com/photo-1552053831-71594a27632d?w=80&h=80&fit=crop"
+              avatar: ''
             }];
           }
         }
@@ -136,9 +136,17 @@ const ProfileScreen = ({ navigation }) => {
           phone: user.phone ? `+91 ${user.phone}` : "+91 0000000000",
           location: user.latitude && user.longitude ? `${user.latitude}, ${user.longitude}` : "Haryana, Gurgaon",
           joinDate,
-          avatar: "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?fm=jpg&q=60&w=3000",
+          avatar: '',
           pets: petsArray,
         });
+
+        // Update stats with actual pet count
+        const petsCount = petsArray.filter(p => p.name !== "No pet registered").length.toString();
+        setStats(prevStats => [
+          { ...prevStats[0], value: petsCount },
+          { ...prevStats[1], value: "2" }, // Keep appointments static for now
+          { ...prevStats[2], value: daysActive },
+        ]);
       } else {
         const userData = await AsyncStorage.getItem('userData');
         if (userData) {
@@ -160,9 +168,7 @@ const ProfileScreen = ({ navigation }) => {
                 age: parsedData.pet_age,
                 gender: parsedData.pet_gender,
                 breed: parsedData.pet_type || "Pet",
-                avatar: parsedData.pet_gender === 'female' 
-                  ? "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=80&h=80&fit=crop"
-                  : "https://images.unsplash.com/photo-1552053831-71594a27632d?w=80&h=80&fit=crop"
+                avatar: ''
               }];
             }
           } else {
@@ -171,9 +177,7 @@ const ProfileScreen = ({ navigation }) => {
               age: parsedData.pet_age,
               gender: parsedData.pet_gender,
               breed: parsedData.pet_type || "Pet",
-              avatar: parsedData.pet_gender === 'female' 
-                ? "https://images.unsplash.com/photo-1514888286974-6c03e2ca1dba?w=80&h=80&fit=crop"
-                : "https://images.unsplash.com/photo-1552053831-71594a27632d?w=80&h=80&fit=crop"
+              avatar: ''
             }];
           }
           
@@ -183,9 +187,17 @@ const ProfileScreen = ({ navigation }) => {
             phone: parsedData.phone || "+91 0000000000",
             location: "Haryana, Gurgaon",
             joinDate,
-            avatar: parsedData.avatar || "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?fm=jpg&q=60&w=3000",
+            avatar: '',
             pets: petsArray,
           });
+
+          // Update stats with actual pet count
+          const petsCount = petsArray.filter(p => p.name !== "No pet registered").length.toString();
+          setStats(prevStats => [
+            { ...prevStats[0], value: petsCount },
+            { ...prevStats[1], value: "2" }, // Keep appointments static for now
+            { ...prevStats[2], value: daysActive },
+          ]);
         } else {
           daysActive = '0';
           petsArray = [{
@@ -193,7 +205,7 @@ const ProfileScreen = ({ navigation }) => {
             age: "",
             gender: "",
             breed: "Pet",
-            avatar: "https://images.unsplash.com/photo-1587300003388-59208cc962cb?w=80&h=80&fit=crop"
+            avatar: ''
           }];
           setUserProfile({
             name: "Test User",
@@ -201,16 +213,18 @@ const ProfileScreen = ({ navigation }) => {
             phone: "+91 0000000000",
             location: "Haryana, Gurgaon",
             joinDate: "March 2023",
-            avatar: "https://images.unsplash.com/photo-1522529599102-193c0d76b5b6?fm=jpg&q=60&w=3000",
+            avatar: '',
             pets: petsArray,
           });
+
+          // Update stats with zero pets
+          setStats(prevStats => [
+            { ...prevStats[0], value: "0" },
+            { ...prevStats[1], value: "2" },
+            { ...prevStats[2], value: daysActive },
+          ]);
         }
       }
-      
-      // Update stats
-      const petsCount = petsArray.filter(p => p.name !== "No pet registered").length.toString();
-      stats[0].value = petsCount;
-      stats[2].value = daysActive;
     } catch (error) {
       console.error('Error fetching user data:', error);
       Alert.alert('Error', 'Failed to load profile data. Please try again.');
@@ -218,12 +232,6 @@ const ProfileScreen = ({ navigation }) => {
       setLoading(false);
     }
   };
-
-  const stats = [
-    { label: "Pets", value: "0", color: "#2563EB", icon: "🐾" },
-    { label: "Appointments", value: "2", color: "#10B981", icon: "📝" },
-    { label: "Days Active", value: "0", color: "#F59E0B", icon: "📅" },
-  ];
 
   const menuItems = [
     { label: "Edit Profile", action: () => navigation.navigate('PetParentEdit'), icon: "person-outline" },
@@ -309,7 +317,13 @@ const ProfileScreen = ({ navigation }) => {
           >
             <View style={styles.profileContent}>
               <View style={styles.avatarContainer}>
-                <Image source={{ uri: userProfile.avatar }} style={styles.avatar} />
+                {userProfile.avatar ? (
+                  <Image source={{ uri: userProfile.avatar }} style={styles.avatar} />
+                ) : (
+                  <View style={styles.avatarPlaceholder}>
+                    <Text style={styles.avatarText}>{userProfile.name.charAt(0).toUpperCase()}</Text>
+                  </View>
+                )}
                 <TouchableOpacity style={styles.cameraButton}>
                   <Ionicons name="camera" size={scale(12)} color="#FFFFFF" />
                 </TouchableOpacity>
@@ -338,7 +352,7 @@ const ProfileScreen = ({ navigation }) => {
           {/* Stats */}
           <View style={styles.statsContainer}>
             {stats.map((stat, index) => (
-              <TouchableOpacity key={index} style={styles.statCard}>
+              <TouchableOpacity onPress={() => navigation.navigate(stat?.screen)} key={index} style={styles.statCard}>
                 <View style={[styles.statIconContainer, { backgroundColor: `${stat.color}15` }]}>
                   <Text style={styles.statIcon}>{stat.icon}</Text>
                 </View>
@@ -399,7 +413,13 @@ const ProfileScreen = ({ navigation }) => {
             {userProfile.pets && userProfile.pets.length > 0 && userProfile.pets[0].name !== "No pet registered" ? (
               userProfile.pets.map((pet, index) => (
                 <View key={pet.id || index} style={styles.petItem}>
-                  <Image source={{ uri: pet.avatar }} style={styles.petImage} />
+                  {pet.avatar ? (
+                    <Image source={{ uri: pet.avatar }} style={styles.petImage} />
+                  ) : (
+                    <View style={styles.petImagePlaceholder}>
+                      <Text style={styles.petImageText}>{pet.name.charAt(0).toUpperCase()}</Text>
+                    </View>
+                  )}
                   <View style={styles.petInfo}>
                     <Text style={styles.petName}>{pet.name}</Text>
                     <Text style={styles.petDetails}>
@@ -522,6 +542,21 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(35), 
     borderWidth: 3, 
     borderColor: "#FFFFFF" 
+  },
+  avatarPlaceholder: {
+    width: scale(70),
+    height: scale(70),
+    borderRadius: moderateScale(35),
+    borderWidth: 3,
+    borderColor: "#FFFFFF",
+    backgroundColor: '#ccc',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  avatarText: {
+    fontSize: moderateScale(30),
+    color: '#fff',
+    fontWeight: 'bold',
   },
   cameraButton: { 
     position: "absolute", 
@@ -676,6 +711,21 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(25), 
     borderWidth: 2, 
     borderColor: "#E5E7EB" 
+  },
+  petImagePlaceholder: {
+    width: scale(50),
+    height: scale(50),
+    borderRadius: moderateScale(25),
+    borderWidth: 2,
+    borderColor: "#E5E7EB",
+    backgroundColor: '#ccc',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  petImageText: {
+    fontSize: moderateScale(20),
+    color: '#fff',
+    fontWeight: 'bold',
   },
   petInfo: { 
     marginLeft: scale(12), 

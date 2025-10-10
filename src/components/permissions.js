@@ -3,8 +3,7 @@ import { PermissionsAndroid, Platform, Alert, Linking } from "react-native";
 export const requestCameraAudioPermission = async () => {
   if (Platform.OS === "android") {
     try {
-      console.log("Checking existing permissions...");
-      
+     
       // Check if permissions are already granted
       const cameraPermission = await PermissionsAndroid.check(
         PermissionsAndroid.PERMISSIONS.CAMERA
@@ -13,11 +12,8 @@ export const requestCameraAudioPermission = async () => {
         PermissionsAndroid.PERMISSIONS.RECORD_AUDIO
       );
 
-      console.log("Current permissions - Camera:", cameraPermission, "Audio:", audioPermission);
-
       // If both are already granted, return true
       if (cameraPermission && audioPermission) {
-        console.log("All permissions already granted");
         return true;
       }
 
@@ -29,8 +25,6 @@ export const requestCameraAudioPermission = async () => {
 
       const cameraGranted = granted[PermissionsAndroid.PERMISSIONS.CAMERA] === "granted";
       const audioGranted = granted[PermissionsAndroid.PERMISSIONS.RECORD_AUDIO] === "granted";
-
-      console.log("Permission results - Camera:", cameraGranted, "Audio:", audioGranted);
 
       if (cameraGranted && audioGranted) {
         return true;
@@ -57,7 +51,6 @@ export const requestCameraAudioPermission = async () => {
         return false;
       }
     } catch (err) {
-      console.error("Permission request error:", err);
       Alert.alert(
         "Permission Error",
         "Failed to request permissions. Please try again.",
@@ -92,7 +85,6 @@ export const checkCameraAudioPermissions = async () => {
         both: cameraPermission && audioPermission,
       };
     } catch (error) {
-      console.error("Permission check error:", error);
       return {
         camera: false,
         audio: false,
@@ -115,7 +107,6 @@ export const requestPermissionsWithRetry = async (maxRetries = 3) => {
   
   while (attempts < maxRetries) {
     attempts++;
-    console.log(`Permission request attempt ${attempts}/${maxRetries}`);
     
     const result = await requestCameraAudioPermission();
     if (result) {
@@ -128,6 +119,5 @@ export const requestPermissionsWithRetry = async (maxRetries = 3) => {
     }
   }
   
-  console.log("All permission request attempts failed");
   return false;
 };

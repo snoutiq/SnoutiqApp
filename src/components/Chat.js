@@ -1097,7 +1097,7 @@ const Chat = ({ navigation, route }) => {
           `https://snoutiq.com/backend/api/chat-rooms/${roomToken}/chats?user_id=${user.id}`,
           {
             headers: { Authorization: `Bearer ${token}` },
-            timeout: 10000,
+            timeout: 100,
           }
         );
 

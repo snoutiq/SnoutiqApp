@@ -1,14 +1,15 @@
-import axios from "axios";
+
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import axios from 'axios';
 import React, {
   createContext,
   useState,
   useEffect,
   useContext,
   useCallback,
-} from "react";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-import { socket } from "./Socket";
-
+} from 'react';
+import { socket } from './Socket';
 
 export const AuthContext = createContext();
 
@@ -18,24 +19,23 @@ export const AuthProvider = ({ children }) => {
   const [token, setToken] = useState(null);
   const [chatRoomToken, setChatRoomToken] = useState(null);
   const [nearbyDoctors, setNearbyDoctors] = useState([]);
+  const [liveDoctors, setLiveDoctors] = useState([]);
 
-  // 🔹 Load from AsyncStorage on mount
+  // Load from AsyncStorage on mount
   useEffect(() => {
     const loadAuthData = async () => {
       try {
-        const savedToken = await AsyncStorage.getItem("token");
-        const savedUser = await AsyncStorage.getItem("user");
-        const savedChatRoomToken = await AsyncStorage.getItem(
-          "chat_room_token"
-        );
-        const savedDoctors = await AsyncStorage.getItem("nearby_doctors");
+        const savedToken = await AsyncStorage.getItem('token');
+        const savedUser = await AsyncStorage.getItem('user');
+        const savedChatRoomToken = await AsyncStorage.getItem('chat_room_token');
+        const savedDoctors = await AsyncStorage.getItem('nearby_doctors');
 
         if (savedToken) setToken(savedToken);
         if (savedUser) setUser(JSON.parse(savedUser));
         if (savedChatRoomToken) setChatRoomToken(savedChatRoomToken);
         if (savedDoctors) setNearbyDoctors(JSON.parse(savedDoctors));
       } catch (error) {
-        console.error("Error loading auth data:", error);
+        console.error('Error loading auth data:', error);
       } finally {
         setLoading(false);
       }
@@ -43,33 +43,29 @@ export const AuthProvider = ({ children }) => {
 
     loadAuthData();
   }, []);
-  const [liveDoctors, setLiveDoctors] = useState([]);
 
-// Socket listener for live doctors
-useEffect(() => {
-  socket.on("active-doctors", (doctorIds) => {
-    // Filter nearby doctors jo live hain
-    const liveNearbyDoctors = nearbyDoctors.filter(doc => 
-      doctorIds.includes(doc.id)
-    );
-    setLiveDoctors(liveNearbyDoctors);
-  });
+  // Socket listener for live doctors
+  useEffect(() => {
+    socket.on('active-doctors', (doctorIds) => {
+      const liveNearbyDoctors = nearbyDoctors.filter((doc) =>
+        doctorIds.includes(doc.id)
+      );
+      setLiveDoctors(liveNearbyDoctors);
+    });
 
-  // Request active doctors on mount
-  socket.emit("get-active-doctors");
+    socket.emit('get-active-doctors');
 
-  // Refresh every 30 seconds
-  const interval = setInterval(() => {
-    socket.emit("get-active-doctors");
-  }, 30000);
+    const interval = setInterval(() => {
+      socket.emit('get-active-doctors');
+    }, 30000);
 
-  return () => {
-    socket.off("active-doctors");
-    clearInterval(interval);
-  };
-}, [nearbyDoctors]);
+    return () => {
+      socket.off('active-doctors');
+      clearInterval(interval);
+    };
+  }, [nearbyDoctors]);
 
-  // 🔹 Fetch nearby doctors
+  // Fetch nearby doctors
   const fetchNearbyDoctors = useCallback(async () => {
     if (!token || !user?.id) return;
 
@@ -80,48 +76,46 @@ useEffect(() => {
       );
 
       if (response.data && Array.isArray(response.data.data)) {
-        updateNearbyDoctors(response.data.data); // Save in context + AsyncStorage
+        updateNearbyDoctors(response.data.data);
       }
     } catch (error) {
-      console.error("Failed to fetch nearby doctors", error);
+      console.error('Failed to fetch nearby doctors', error);
     }
   }, [token, user?.id]);
 
-const updateUser = async (newUserData) => {
-  try {
-    setUser((prevUser) => {
-      const updatedUser = { ...prevUser, ...newUserData };
-      AsyncStorage.setItem("user", JSON.stringify(updatedUser));
-      return updatedUser;
-    });
-  } catch (error) {
-    console.error("Error updating user data:", error);
-  }
-};
+  const updateUser = async (newUserData) => {
+    try {
+      setUser((prevUser) => {
+        const updatedUser = { ...prevUser, ...newUserData };
+        AsyncStorage.setItem('user', JSON.stringify(updatedUser));
+        return updatedUser;
+      });
+    } catch (error) {
+      console.error('Error updating user data:', error);
+    }
+  };
 
-
-  // 🔹 Login function
+  // Login function
   const login = async (userData, jwtToken, initialChatToken = null) => {
     try {
       setUser(userData);
       setToken(jwtToken);
 
-      await AsyncStorage.setItem("token", jwtToken);
-      await AsyncStorage.setItem("user", JSON.stringify(userData));
+      await AsyncStorage.setItem('token', jwtToken);
+      await AsyncStorage.setItem('user', JSON.stringify(userData));
 
       if (initialChatToken) {
         setChatRoomToken(initialChatToken);
-        await AsyncStorage.setItem("chat_room_token", initialChatToken);
+        await AsyncStorage.setItem('chat_room_token', initialChatToken);
       }
 
-      // ✅ Fetch nearby doctors after login
       fetchNearbyDoctors();
     } catch (error) {
-      console.error("Error saving auth data:", error);
+      console.error('Error saving auth data:', error);
     }
   };
 
-  // 🔹 Update nearby doctors
+  // Update nearby doctors
   const updateNearbyDoctors = async (newDoctors) => {
     try {
       setNearbyDoctors((prev) => {
@@ -130,30 +124,49 @@ const updateUser = async (newUserData) => {
           ...prev,
           ...newDoctors.filter((d) => !existingIds.has(d.id)),
         ];
-        AsyncStorage.setItem("nearby_doctors", JSON.stringify(merged));
+        AsyncStorage.setItem('nearby_doctors', JSON.stringify(merged));
         return merged;
       });
     } catch (error) {
-      console.error("Error updating nearby doctors:", error);
+      console.error('Error updating nearby doctors:', error);
     }
   };
 
-  // 🔹 Logout function
   const logout = async () => {
     try {
+      try {
+        await GoogleSignin.signOut();
+      } catch (googleError) {
+        console.warn('⚠️ Google Sign-Out error (continuing):', googleError.message);
+      }
+
       setUser(null);
       setToken(null);
       setChatRoomToken(null);
       setNearbyDoctors([]);
+      setLiveDoctors([]);
 
-      await AsyncStorage.multiRemove([
-        "token",
-        "user",
-        "chat_room_token",
-        "nearby_doctors",
-      ]);
+      const keysToRemove = [
+        'token',
+        'user',
+        'chat_room_token',
+        'nearby_doctors',
+        'userEmail',
+        'googleSub',
+        'userId',
+        'userLatitude',
+        'userLongitude',
+      ];
+
+      await AsyncStorage.multiRemove(keysToRemove);
+
+      if (socket && socket.connected) {
+        socket.disconnect();
+      }
+
     } catch (error) {
-      console.error("Error during logout:", error);
+      setUser(null);
+      setToken(null);
     }
   };
 
@@ -163,14 +176,14 @@ const updateUser = async (newUserData) => {
     chatRoomToken,
     login,
     logout,
-    fetchNearbyDoctors, // 🔹 Expose function to call manually if needed
+    fetchNearbyDoctors,
     nearbyDoctors,
     updateNearbyDoctors,
     loading,
     isLoggedIn: !!token,
     updateUser,
-     liveDoctors, // Add this
-  setLiveDoctors,
+    liveDoctors,
+    setLiveDoctors,
   };
 
   return (
@@ -178,9 +191,9 @@ const updateUser = async (newUserData) => {
   );
 };
 
-// 🔹 Hook
 export const useAuth = () => {
   const context = useContext(AuthContext);
-  if (!context) throw new Error("useAuth must be used within an AuthProvider");
+  if (!context) throw new Error('useAuth must be used within an AuthProvider');
   return context;
 };
+

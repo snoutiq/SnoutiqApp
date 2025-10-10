@@ -1,166 +1,128 @@
+import React, { useEffect, useState } from 'react';
+import { StatusBar, Platform, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, StatusBar, Platform } from 'react-native';
+import { GestureHandlerRootView } from 'react-native-gesture-handler';
+import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { PaperProvider } from 'react-native-paper';
+import * as Notifications from 'expo-notifications';
 
-import { SafeAreaView } from 'react-native-safe-area-context';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import {
   addNotificationListeners,
   registerForPushNotificationsAsync,
 } from './src/context/notifications';
-import AppDrawer from './src/navigation/AppDrawer';
 import AuthStack from './src/navigation/AuthStack';
+import MainStack from './src/navigation/MainStack';
 import { navigationRef } from './src/navigation/RootNavigation';
-import { GestureHandlerRootView } from "react-native-gesture-handler";
-import { SafeAreaProvider } from "react-native-safe-area-context";
 import LoaderScreen from './src/components/LoaderScreen';
+import { checkCameraAudioPermissions, requestPermissionsWithRetry } from './src/components/permissions';
 
-import { enableScreens } from 'react-native-screens';
-import { requestPermissionsWithRetry, checkCameraAudioPermissions } from './src/components/permissions';
-enableScreens();
+// Configure notification behavior
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
 
 const App = () => (
-   <GestureHandlerRootView style={{ flex: 1 }}>
-      <SafeAreaProvider>
-        <PaperProvider>
-          <AuthProvider>
-            <StatusBar
-              barStyle="light-content"
-              backgroundColor="#816ee9ff"
-            />
-            <AppNav />
-          </AuthProvider>
-        </PaperProvider>
-      </SafeAreaProvider>
-    </GestureHandlerRootView>
+  <GestureHandlerRootView style={{ flex: 1 }}>
+    <SafeAreaProvider>
+      <PaperProvider>
+        <AuthProvider>
+          <StatusBar barStyle="light-content" backgroundColor="#816ee9" />
+          <AppNav />
+        </AuthProvider>
+      </PaperProvider>
+    </SafeAreaProvider>
+  </GestureHandlerRootView>
 );
 
 const AppNav = () => {
   const { isLoggedIn, token: jwt, isLoading } = useAuth();
   const [refreshKey, setRefreshKey] = useState(0);
   const [permissionStatus, setPermissionStatus] = useState({
+    camera: false,
+    audio: false,
+    notification: false,
     requested: false,
-    granted: false,
   });
 
-  // Function to force refresh
-  const forceRefresh = () => {
-    setRefreshKey(prevKey => prevKey + 1);
+  // Request notification permission
+  const requestNotificationPermission = async () => {
+    try {
+      const granted = await registerForPushNotificationsAsync();
+      setPermissionStatus(prev => ({ ...prev, notification: !!granted }));
+    } catch (error) {
+      console.error("Notification permission error:", error);
+    }
   };
 
-  // Enhanced permission request
+  // Request camera/audio and notification permissions
   const handlePermissionRequest = async () => {
     try {
-      console.log("Starting permission request...");
-      
-      // First check if permissions are already granted
       const currentPermissions = await checkCameraAudioPermissions();
-      console.log("Current permission status:", currentPermissions);
-      
-      if (currentPermissions.both) {
-        console.log("Permissions already granted");
-        setPermissionStatus({
-          requested: true,
-          granted: true,
-        });
-        return;
+      let cameraAudioGranted = currentPermissions.both;
+
+      if (!cameraAudioGranted) {
+        cameraAudioGranted = await requestPermissionsWithRetry(2);
       }
 
-      // Request permissions with retry mechanism
-      const granted = await requestPermissionsWithRetry(2);
-      
+      await requestNotificationPermission();
+
       setPermissionStatus({
+        camera: cameraAudioGranted,
+        audio: cameraAudioGranted,
+        notification: permissionStatus.notification,
         requested: true,
-        granted: granted,
       });
-      
-      if (granted) {
-        console.log("Permissions successfully granted");
-      } else {
-        console.log("Permissions denied by user");
-      }
-      
     } catch (error) {
       console.error("Permission handling error:", error);
       setPermissionStatus({
+        camera: false,
+        audio: false,
+        notification: false,
         requested: true,
-        granted: false,
       });
     }
   };
 
+  // Setup notification listeners & registration
   useEffect(() => {
-    if (!isLoggedIn || !jwt) return;
+    if (!isLoggedIn) return;
 
-    const setupNotifications = async () => {
-      try {
-        await registerForPushNotificationsAsync(jwt);
-      } catch (error) {
-        console.error('Failed to set up push notifications:', error);
-      }
-    };
-
-    const notificationListeners = addNotificationListeners({
-      onReceive: (notification) => {
-        console.log('नया नोटिफिकेशन प्राप्त हुआ:', notification);
-      },
-      onResponse: (response) => {
-        console.log('यूजर ने नोटिफिकेशन टैप किया:', response);
-      }
+    const listenersCleanup = addNotificationListeners({
+      onReceive: (notification) => console.log("Notification received:", notification),
+      onResponse: (response) => console.log("Notification tapped:", response),
     });
 
-    setupNotifications();
+    // Just request permissions; no backend call yet
+    registerForPushNotificationsAsync();
 
     return () => {
-      notificationListeners();
+      listenersCleanup();
     };
-  }, [isLoggedIn, jwt]);
+  }, [isLoggedIn]);
 
-  // Request permissions when app loads and user is logged in
+  // Request permissions on app load
   useEffect(() => {
     if (isLoggedIn && !permissionStatus.requested) {
-      // Add a small delay to ensure UI is ready
       const timer = setTimeout(() => {
         handlePermissionRequest();
-      }, 1500);
-      
+      }, 1000);
+
       return () => clearTimeout(timer);
     }
   }, [isLoggedIn, permissionStatus.requested]);
 
-  // Periodic permission check (every 30 seconds when app is active)
-  useEffect(() => {
-    if (!isLoggedIn) return;
-
-    const interval = setInterval(async () => {
-      try {
-        const currentPermissions = await checkCameraAudioPermissions();
-        if (currentPermissions.both !== permissionStatus.granted) {
-          setPermissionStatus(prev => ({
-            ...prev,
-            granted: currentPermissions.both,
-          }));
-        }
-      } catch (error) {
-        console.error("Permission check interval error:", error);
-      }
-    }, 30000); // Check every 30 seconds
-
-    return () => clearInterval(interval);
-  }, [isLoggedIn, permissionStatus.granted]);
-
-if (isLoading) {
-  return <LoaderScreen />;
-}
-
+  if (isLoading) {
+    return <LoaderScreen />;
+  }
 
   return (
-    <NavigationContainer
-      ref={navigationRef}
-      key={refreshKey}
-    >
-      {isLoggedIn ? <AppDrawer forceRefresh={forceRefresh} /> : <AuthStack />}
+    <NavigationContainer ref={navigationRef} key={refreshKey}>
+      {isLoggedIn ? <MainStack /> : <AuthStack />}
     </NavigationContainer>
   );
 };

@@ -21,7 +21,7 @@ import {
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  View,RefreshControl
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { AuthContext } from "../context/AuthContext";
@@ -31,13 +31,16 @@ import ProfileCompletionModalAuto from "../utils/ProfileCompletionModalAuto";
 import axios from "axios";
 import DetailedWeatherWidget from "./DetailedWeatherWidget";
 import LiveDoctorSelectionModal from "./LiveDoctorSelectionModal";
+import { useFocusEffect } from '@react-navigation/native';
+
 
 const { width, height } = Dimensions.get("window");
 
 // Enhanced responsive functions
 const scale = (size) => (width / 375) * size;
 const verticalScale = (size) => (height / 667) * size;
-const moderateScale = (size, factor = 0.5) => size + (scale(size) - size) * factor;
+const moderateScale = (size, factor = 0.5) =>
+  size + (scale(size) - size) * factor;
 
 // Font sizes with accessibility support
 const FONT_SIZES = {
@@ -353,13 +356,13 @@ const TrustBadge = memo(() => {
   };
 
   return (
-    <Animated.View 
+    <Animated.View
       style={[
         styles.trustBadgeContainer,
-        { 
+        {
           opacity: fadeAnim,
-          transform: [{ scale: scaleAnim }]
-        }
+          transform: [{ scale: scaleAnim }],
+        },
       ]}
     >
       <TouchableOpacity
@@ -377,7 +380,11 @@ const TrustBadge = memo(() => {
           <View style={styles.trustBadgeContent}>
             <View style={styles.trustIconsRow}>
               <View style={styles.trustIcon}>
-                <Ionicons name="shield-checkmark" size={scale(16)} color="#10B981" />
+                <Ionicons
+                  name="shield-checkmark"
+                  size={scale(16)}
+                  color="#10B981"
+                />
               </View>
               <View style={styles.trustIcon}>
                 <Ionicons name="heart" size={scale(16)} color="#EC4899" />
@@ -386,30 +393,30 @@ const TrustBadge = memo(() => {
                 <Ionicons name="star" size={scale(16)} color="#F59E0B" />
               </View>
             </View>
-            
+
             <Text style={styles.trustTitle}>Trusted by Pet Parents</Text>
-            
+
             <View style={styles.trustStats}>
               <View style={styles.trustStatItem}>
                 <Text style={styles.trustStatNumber}>100+</Text>
                 <Text style={styles.trustStatLabel}>Happy Pets</Text>
               </View>
-              
+
               <View style={styles.trustStatDivider} />
-              
+
               <View style={styles.trustStatItem}>
                 <Text style={styles.trustStatNumber}>50+</Text>
                 <Text style={styles.trustStatLabel}>Expert Vets</Text>
               </View>
-              
+
               <View style={styles.trustStatDivider} />
-              
+
               <View style={styles.trustStatItem}>
                 <Text style={styles.trustStatNumber}>24/7</Text>
                 <Text style={styles.trustStatLabel}>Support</Text>
               </View>
             </View>
-            
+
             <View style={styles.trustFooter}>
               <Ionicons name="ribbon" size={scale(12)} color="#6B7280" />
               <Text style={styles.trustFooterText}>
@@ -418,7 +425,7 @@ const TrustBadge = memo(() => {
             </View>
           </View>
         </LinearGradient>
-        
+
         {/* Floating elements for visual appeal */}
         <View style={styles.floatingElement1} />
         <View style={styles.floatingElement2} />
@@ -430,20 +437,40 @@ const TrustBadge = memo(() => {
 
 // ------------------- HomeScreen -------------------
 export default function HomeScreen({ navigation }) {
-  const { user, token, updateNearbyDoctors, liveDoctors } = useContext(AuthContext);
+  const { token, updateNearbyDoctors, liveDoctors } = useContext(AuthContext);
   const [inputMessage, setInputMessage] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const [showAppointmentModal, setShowAppointmentModal] = useState(false);
   const [nearbyDoctors, setNearbyDoctors] = useState([]);
-  const [showPetModal, setShowPetModal] = useState(false);
   const [showLiveDoctorsModal, setShowLiveDoctorsModal] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const [callStatus, setCallStatus] = useState(null);
-  
-  const { updateUser } = useContext(AuthContext);
+  const { user, updateUser } = useContext(AuthContext);
+  const [showPetModal, setShowPetModal] = useState(false);
   const timeoutRef = useRef(null);
-  
+   const [refreshing, setRefreshing] = useState(false);
+  const [data, setData] = useState(null);
+
+  const fetchData = async () => {
+    setRefreshing(true);
+    try {
+      console.log('Refreshing Home Page data...');
+      await new Promise((r) => setTimeout(r, 1000));
+      setData(Date.now()); 
+    } catch (error) {
+      console.error('Error refreshing HomePage:', error);
+    } finally {
+      setRefreshing(false);
+    }
+  };
+
+  useFocusEffect(
+    useCallback(() => {
+      fetchData();
+    }, [])
+  );
+
   const fetchNearbyDoctors = useCallback(async () => {
     if (!token || !user?.id) return;
 
@@ -461,9 +488,7 @@ export default function HomeScreen({ navigation }) {
       console.error("Failed to fetch nearby doctors", error);
     }
   }, [token, user?.id, updateNearbyDoctors]);
-  // console.log(nearbyDoctors,"ankit");
-  
-  
+
   useEffect(() => {
     if (!token || !user?.id) return;
 
@@ -477,20 +502,30 @@ export default function HomeScreen({ navigation }) {
     return () => clearInterval(interval);
   }, [token, user?.id, fetchNearbyDoctors]);
 
-  useEffect(() => {
-    if (user) {
-      const hasPetData =
-        user.pet_name && user.pet_gender && user.breed && user.pet_age;
+useEffect(() => {
+  if (!user) return;
 
-      if (!hasPetData) {
-        setShowPetModal(true);
-      } else {
-        setShowPetModal(false);
-      }
-    } else {
-      setShowPetModal(false);
-    }
-  }, [user]);
+  const hasPetData = !!(
+    user.pet_name?.trim() &&
+    user.pet_gender?.trim() &&
+    user.breed?.trim() &&
+    user.pet_age
+  );
+
+  if (!hasPetData && user.profileCompleted) {
+    // Only update once
+    updateUser((prev) =>
+      prev.profileCompleted ? { ...prev, profileCompleted: false } : prev
+    );
+  }
+
+  if (!hasPetData && !user.profileCompleted) {
+    setShowPetModal(true);
+  } else {
+    setShowPetModal(false);
+  }
+}, [user]);
+
 
   // Socket listeners for call handling
   useEffect(() => {
@@ -583,7 +618,9 @@ export default function HomeScreen({ navigation }) {
   };
 
   const handleCallDoctor = (doctor) => {
-    const callId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+    const callId = `call_${Date.now()}_${Math.random()
+      .toString(36)
+      .substring(2, 8)}`;
     const channel = `channel_${callId}`;
     const patientId = user?.id || "101";
 
@@ -648,29 +685,33 @@ export default function HomeScreen({ navigation }) {
     <SafeAreaView style={styles.container}>
       {showPetModal && (
         <ProfileCompletionModalAuto
+          visible={showPetModal}
           onComplete={() => setShowPetModal(false)}
           updateUser={updateUser}
           token={token}
           user={user}
         />
       )}
+
       <ScrollView
         style={styles.scrollView}
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollViewContent}
+        refreshControl={
+        <RefreshControl refreshing={refreshing} onRefresh={fetchData} />
+      }
       >
         <LinearGradient colors={["#7C3AED", "#EC4899"]} style={styles.header}>
           <View style={styles.headerTop}>
             <View style={styles.headerLeft}>
-              <Text style={styles.appLogo} numberOfLines={1}>SnoutIQ</Text>
+              <Text style={styles.appLogo} numberOfLines={1}>
+                SnoutIQ
+              </Text>
               <Text style={styles.welcomeSubtext} numberOfLines={1}>
-                Welcome back, {user?.name?.split(' ')[0] || 'Pet Parent'}!
+                Welcome back, {user?.name?.split(" ")[0] || "Pet Parent"}!
               </Text>
             </View>
-            <TouchableOpacity 
-              style={styles.userAvatar}
-              activeOpacity={0.8}
-            >
+            <TouchableOpacity style={styles.userAvatar} activeOpacity={0.8}>
               <Text style={styles.userAvatarText}>
                 {user?.name ? user.name.substring(0, 2).toUpperCase() : "SP"}
               </Text>
@@ -702,7 +743,11 @@ export default function HomeScreen({ navigation }) {
               <View style={styles.petStatItem}>
                 <Text style={styles.petStatLabel}>Gender</Text>
                 <Text style={styles.petStatValue}>
-                  {user?.pet_gender === "Male" ? "♂" : user?.pet_gender === "Female" ? "♀" : "⚤"}
+                  {user?.pet_gender === "Male"
+                    ? "♂"
+                    : user?.pet_gender === "Female"
+                    ? "♀"
+                    : "⚤"}
                 </Text>
               </View>
             </View>
@@ -774,7 +819,9 @@ export default function HomeScreen({ navigation }) {
               >
                 <Ionicons name="medical" size={scale(28)} color="#34C759" />
               </LinearGradient>
-              <Text style={styles.serviceTitle} numberOfLines={2}>Book Clinic Visit</Text>
+              <Text style={styles.serviceTitle} numberOfLines={2}>
+                Book Clinic Visit
+              </Text>
               <Text style={styles.serviceSubtitle} numberOfLines={1}>
                 {nearbyDoctors?.length || 0} clinics near you
               </Text>
@@ -789,10 +836,18 @@ export default function HomeScreen({ navigation }) {
                 colors={["#E8F4FF", "#F0F8FF"]}
                 style={styles.serviceIcon}
               >
-                <Ionicons name="document-text" size={scale(28)} color="#007AFF" />
+                <Ionicons
+                  name="document-text"
+                  size={scale(28)}
+                  color="#007AFF"
+                />
               </LinearGradient>
-              <Text style={styles.serviceTitle} numberOfLines={2}>Health Records</Text>
-              <Text style={styles.serviceSubtitle} numberOfLines={1}>View pet history</Text>
+              <Text style={styles.serviceTitle} numberOfLines={2}>
+                Health Records
+              </Text>
+              <Text style={styles.serviceSubtitle} numberOfLines={1}>
+                View pet history
+              </Text>
             </TouchableOpacity>
 
             <TouchableOpacity style={styles.serviceItem} activeOpacity={0.7}>
@@ -802,8 +857,12 @@ export default function HomeScreen({ navigation }) {
               >
                 <Ionicons name="medkit" size={scale(28)} color="#FF3B30" />
               </LinearGradient>
-              <Text style={styles.serviceTitle} numberOfLines={2}>Medicines</Text>
-              <Text style={styles.serviceSubtitle} numberOfLines={1}>Order & refills</Text>
+              <Text style={styles.serviceTitle} numberOfLines={2}>
+                Medicines
+              </Text>
+              <Text style={styles.serviceSubtitle} numberOfLines={1}>
+                Order & refills
+              </Text>
             </TouchableOpacity>
           </View>
         </View>
