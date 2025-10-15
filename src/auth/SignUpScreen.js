@@ -3,14 +3,11 @@ import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import axios from 'axios';
 import * as Location from 'expo-location';
 import { useNavigation } from 'expo-router';
-import * as WebBrowser from 'expo-web-browser';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Alert, Image, ImageBackground, StyleSheet, Text, TouchableOpacity, View } from 'react-native';
 import { moderateScale, scale, verticalScale } from 'react-native-size-matters';
 import { useAuth } from '../context/AuthContext';
 
-// Configure WebBrowser for auth session
-WebBrowser.maybeCompleteAuthSession();
 
 // Colors configuration
 const colors = {

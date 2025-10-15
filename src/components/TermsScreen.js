@@ -1,82 +1,167 @@
-import React from 'react';
-import { ScrollView, StyleSheet, Text, View, Linking } from 'react-native';
-import { Ionicons } from '@expo/vector-icons';
-import { useNavigation } from '@react-navigation/native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+import React from "react";
+import {
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
+  Linking,
+  TouchableOpacity,
+} from "react-native";
+import { Ionicons } from "@expo/vector-icons";
+import { useNavigation } from "@react-navigation/native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import { scale, verticalScale, moderateScale } from "react-native-size-matters";
+import { LinearGradient } from "expo-linear-gradient";
+
+// ✅ Your DESIGN system
+const DESIGN = {
+  TYPOGRAPHY: {
+    h1: moderateScale(24),
+    h2: moderateScale(20),
+    h3: moderateScale(18),
+    body: moderateScale(15),
+    bodySmall: moderateScale(14),
+    caption: moderateScale(13),
+    tiny: moderateScale(11),
+  },
+  SPACING: {
+    xs: scale(8),
+    sm: scale(12),
+    md: scale(16),
+    lg: scale(20),
+    xl: scale(24),
+    xxl: scale(32),
+  },
+  VERTICAL_SPACING: {
+    xs: verticalScale(8),
+    sm: verticalScale(12),
+    md: verticalScale(16),
+    lg: verticalScale(20),
+    xl: verticalScale(24),
+  },
+  RADIUS: {
+    sm: moderateScale(8),
+    md: moderateScale(12),
+    lg: moderateScale(16),
+    xl: moderateScale(20),
+    full: moderateScale(999),
+  },
+  COLORS: {
+    primary: "#667eea",
+    secondary: "#764ba2",
+    white: "#FFFFFF",
+    gray50: "#F9FAFB",
+    gray100: "#F3F4F6",
+    gray200: "#E5E7EB",
+    gray400: "#9CA3AF",
+    gray600: "#6B7280",
+    gray700: "#374151",
+    gray900: "#1F2937",
+    success: "#10B981",
+    warning: "#F59E0B",
+    error: "#EF4444",
+    info: "#3B82F6",
+    background: "#F8FAFC",
+  },
+};
 
 const TermsScreen = () => {
   const navigation = useNavigation();
 
-  const openEmail = () => {
-    Linking.openURL('mailto:contact.naukrion@gmail.com');
-  };
-
-  const openWebsite = () => {
-    Linking.openURL('https://naukrion.com/');
-  };
+  const openEmail = () => Linking.openURL("mailto:contact.naukrion@gmail.com");
+  const openWebsite = () => Linking.openURL("https://naukrion.com/");
 
   return (
     <SafeAreaView style={styles.container}>
       {/* Header */}
-      <View style={styles.header}>
-        <Ionicons 
-          name="arrow-back" 
-          size={24} 
-          color="#333" 
-          onPress={() => navigation.goBack()}
-          style={styles.backIcon}
-        />
-        <Text style={styles.headerTitle}>Terms & Conditions</Text>
-      </View>
-
-      <ScrollView 
+      <LinearGradient
+        colors={[DESIGN.COLORS.primary, DESIGN.COLORS.secondary]}
+        style={styles.header}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+      >
+        <View style={styles.headerContent}>
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={scale(28)}
+              color={DESIGN.COLORS.white}
+            />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Terms & Conditions</Text>
+            <Text style={styles.headerSubtitle}>
+              Last Updated: May 31, 2025
+            </Text>
+          </View>
+          <View style={styles.headerPlaceholder} />
+        </View>
+      </LinearGradient>
+      <ScrollView
         style={styles.scrollContainer}
         contentContainerStyle={styles.contentContainer}
+        showsVerticalScrollIndicator={false}
       >
         <Text style={styles.lastUpdated}>Last updated: April 18, 2025</Text>
-        
+
         <Text style={styles.introText}>
-          Please read these terms and conditions carefully before using Our Service.
+          Please read these terms and conditions carefully before using Our
+          Service.
         </Text>
 
         {/* Interpretation and Definitions */}
         <Section title="Interpretation and Definitions">
           <SubSection title="Interpretation">
             <Paragraph>
-              The words of which the initial letter is capitalized have meanings defined under the following conditions. 
-              The following definitions shall have the same meaning regardless of whether they appear in singular or in plural.
+              The words of which the initial letter is capitalized have meanings
+              defined under the following conditions. The following definitions
+              shall have the same meaning regardless of whether they appear in
+              singular or plural.
             </Paragraph>
           </SubSection>
 
           <SubSection title="Definitions">
-            <Paragraph>For the purposes of these Terms and Conditions:</Paragraph>
-            
+            <Paragraph>
+              For the purposes of these Terms and Conditions:
+            </Paragraph>
+
             <Definition term="Affiliate">
-              means an entity that controls, is controlled by or is under common control with a party, where "control" means ownership of 50% or more of the shares, equity interest or other securities entitled to vote for election of directors or other managing authority.
+              means an entity that controls, is controlled by or is under common
+              control with a party, where "control" means ownership of 50% or
+              more of the shares, equity interest or other securities entitled
+              to vote for election of directors or other managing authority.
             </Definition>
 
-            <Definition term="Country">
-              refers to: Haryana, India
-            </Definition>
+            <Definition term="Country">refers to: Haryana, India</Definition>
 
             <Definition term="Company">
-              (referred to as either "the Company", "We", "Us" or "Our" in this Agreement) refers to NaukrionXpert Private Limited, Plot 5, Royal Apartment, Nobel Enclave, Sector 22, Gurugram.
+              (referred to as either "the Company", "We", "Us" or "Our" in this
+              Agreement) refers to NaukrionXpert Private Limited, Plot 5, Royal
+              Apartment, Nobel Enclave, Sector 22, Gurugram.
             </Definition>
 
             <Definition term="Device">
-              means any device that can access the Service such as a computer, a cellphone or a digital tablet.
+              means any device that can access the Service such as a computer, a
+              cellphone or a digital tablet.
             </Definition>
 
-            <Definition term="Service">
-              refers to the Website.
-            </Definition>
+            <Definition term="Service">refers to the Website.</Definition>
 
             <Definition term="Terms and Conditions">
-              (also referred as "Terms") mean these Terms and Conditions that form the entire agreement between You and the Company regarding the use of the Service.
+              (also referred as "Terms") mean these Terms and Conditions that
+              form the entire agreement between You and the Company regarding
+              the use of the Service.
             </Definition>
 
             <Definition term="Website">
-              refers to naukrion, accessible from <Text style={styles.link} onPress={openWebsite}>https://naukrion.com/</Text>
+              refers to naukrion, accessible from{" "}
+              <Text style={styles.link} onPress={openWebsite}>
+                https://naukrion.com/
+              </Text>
             </Definition>
           </SubSection>
         </Section>
@@ -84,69 +169,48 @@ const TermsScreen = () => {
         {/* Acknowledgment */}
         <Section title="Acknowledgment">
           <Paragraph>
-            These are the Terms and Conditions governing the use of this Service and the agreement that operates between You and the Company. 
-            These Terms and Conditions set out the rights and obligations of all users regarding the use of the Service.
+            These are the Terms and Conditions governing the use of this Service
+            and the agreement that operates between You and the Company. These
+            Terms and Conditions set out the rights and obligations of all users
+            regarding the use of the Service.
           </Paragraph>
           <Paragraph>
-            Your access to and use of the Service is conditioned on Your acceptance of and compliance with these Terms and Conditions. 
-            These Terms and Conditions apply to all visitors, users and others who access or use the Service.
+            Your access to and use of the Service is conditioned on Your
+            acceptance of and compliance with these Terms and Conditions.
           </Paragraph>
           <Paragraph>
-            By accessing or using the Service You agree to be bound by these Terms and Conditions. 
-            If You disagree with any part of these Terms and Conditions then You may not access the Service.
+            By accessing or using the Service You agree to be bound by these
+            Terms and Conditions.
           </Paragraph>
           <Paragraph>
-            You represent that you are over the age of 18. The Company does not permit those under 18 to use the Service.
-          </Paragraph>
-        </Section>
-
-        {/* Links to Other Websites */}
-        <Section title="Links to Other Websites">
-          <Paragraph>
-            Our Service may contain links to third-party web sites or services that are not owned or controlled by the Company.
-          </Paragraph>
-          <Paragraph>
-            The Company has no control over, and assumes no responsibility for, the content, privacy policies, or practices of any third party web sites or services. 
-            You further acknowledge and agree that the Company shall not be responsible or liable, directly or indirectly, for any damage or loss caused or alleged to be caused by or in connection with the use of or reliance on any such content, goods or services available on or through any such web sites or services.
-          </Paragraph>
-          <Paragraph>
-            We strongly advise You to read the terms and conditions and privacy policies of any third-party web sites or services that You visit.
-          </Paragraph>
-        </Section>
-
-        {/* Termination */}
-        <Section title="Termination">
-          <Paragraph>
-            We may terminate or suspend Your access immediately, without prior notice or liability, for any reason whatsoever, including without limitation if You breach these Terms and Conditions.
-          </Paragraph>
-          <Paragraph>
-            Upon termination, Your right to use the Service will cease immediately.
-          </Paragraph>
-        </Section>
-
-        {/* Limitation of Liability */}
-        <Section title="Limitation of Liability">
-          <Paragraph>
-            Notwithstanding any damages that You might incur, the entire liability of the Company and any of its suppliers under any provision of this Terms and Your exclusive remedy for all of the foregoing shall be limited to the amount actually paid by You through the Service or 100 USD if You haven't purchased anything through the Service.
+            You represent that you are over the age of 18. The Company does not
+            permit those under 18 to use the Service.
           </Paragraph>
         </Section>
 
         {/* Contact Us */}
         <Section title="Contact Us">
           <Paragraph>
-            If you have any questions about these Terms and Conditions, You can contact us:
+            If you have any questions about these Terms and Conditions, You can
+            contact us:
           </Paragraph>
           <View style={styles.contactItem}>
-            <Ionicons name="mail-outline" size={16} color="#1783BB" />
-            <Text style={styles.contactText} onPress={openEmail}>contact.naukrion@gmail.com</Text>
+            <Ionicons
+              name="mail-outline"
+              size={DESIGN.TYPOGRAPHY.bodySmall}
+              color={DESIGN.COLORS.info}
+            />
+            <Text style={styles.contactText} onPress={openEmail}>
+              contact.naukrion@gmail.com
+            </Text>
           </View>
         </Section>
       </ScrollView>
-  </SafeAreaView>
+    </SafeAreaView>
   );
 };
 
-// Reusable components for better organization
+// ✅ Reusable Components
 const Section = ({ title, children }) => (
   <View style={styles.section}>
     <Text style={styles.sectionTitle}>{title}</Text>
@@ -172,99 +236,122 @@ const Definition = ({ term, children }) => (
   </View>
 );
 
+// ✅ Styles using DESIGN system
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
-  },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  backIcon: {
-    marginRight: 16,
-  },
-  headerTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
+    backgroundColor: DESIGN.COLORS.gray50,
   },
   scrollContainer: {
     flex: 1,
   },
   contentContainer: {
-    padding: 16,
-    paddingBottom: 32,
+    paddingHorizontal: DESIGN.SPACING.lg,
+    paddingBottom: DESIGN.VERTICAL_SPACING.xl,
   },
   lastUpdated: {
-    fontSize: 12,
-    color: '#666',
-    marginBottom: 16,
+    fontSize: DESIGN.TYPOGRAPHY.caption,
+    color: DESIGN.COLORS.gray600,
+    marginBottom: DESIGN.VERTICAL_SPACING.sm,
   },
   introText: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 24,
-    lineHeight: 20,
+    fontSize: DESIGN.TYPOGRAPHY.body,
+    color: DESIGN.COLORS.gray700,
+    marginBottom: DESIGN.VERTICAL_SPACING.lg,
+    lineHeight: verticalScale(20),
   },
   section: {
-    marginBottom: 24,
+    marginBottom: DESIGN.VERTICAL_SPACING.xl,
   },
   sectionTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#1783BB',
-    marginBottom: 12,
+    fontSize: DESIGN.TYPOGRAPHY.h3,
+    fontWeight: "600",
+    color: DESIGN.COLORS.primary,
+    marginBottom: DESIGN.VERTICAL_SPACING.sm,
   },
   subSection: {
-    marginBottom: 16,
-    marginLeft: 8,
+    marginBottom: DESIGN.VERTICAL_SPACING.md,
+    marginLeft: DESIGN.SPACING.sm,
   },
   subSectionTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
-    marginBottom: 8,
+    fontSize: DESIGN.TYPOGRAPHY.body,
+    fontWeight: "600",
+    color: DESIGN.COLORS.gray900,
+    marginBottom: DESIGN.VERTICAL_SPACING.xs,
   },
   paragraph: {
-    fontSize: 14,
-    color: '#333',
-    marginBottom: 12,
-    lineHeight: 20,
+    fontSize: DESIGN.TYPOGRAPHY.bodySmall,
+    color: DESIGN.COLORS.gray700,
+    marginBottom: DESIGN.VERTICAL_SPACING.sm,
+    lineHeight: verticalScale(20),
   },
   definition: {
-    flexDirection: 'row',
-    marginBottom: 8,
+    flexDirection: "row",
+    marginBottom: DESIGN.VERTICAL_SPACING.xs,
   },
   term: {
-    fontSize: 14,
-    fontWeight: '600',
-    color: '#333',
+    fontSize: DESIGN.TYPOGRAPHY.bodySmall,
+    fontWeight: "600",
+    color: DESIGN.COLORS.gray900,
   },
   definitionText: {
-    fontSize: 14,
-    color: '#333',
+    fontSize: DESIGN.TYPOGRAPHY.bodySmall,
+    color: DESIGN.COLORS.gray700,
     flex: 1,
-    lineHeight: 20,
+    lineHeight: verticalScale(20),
   },
   link: {
-    color: '#1783BB',
-    textDecorationLine: 'underline',
+    color: DESIGN.COLORS.info,
+    textDecorationLine: "underline",
   },
   contactItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: 8,
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: DESIGN.VERTICAL_SPACING.xs,
   },
   contactText: {
-    fontSize: 14,
-    color: '#1783BB',
-    marginLeft: 8,
-    textDecorationLine: 'underline',
+    fontSize: DESIGN.TYPOGRAPHY.bodySmall,
+    color: DESIGN.COLORS.info,
+    marginLeft: DESIGN.SPACING.xs,
+    textDecorationLine: "underline",
+  },
+  header: {
+    paddingHorizontal: DESIGN.SPACING.lg,
+    paddingTop: DESIGN.SPACING.md,
+    paddingBottom: DESIGN.SPACING.xl,
+    borderBottomLeftRadius: DESIGN.RADIUS.xl,
+    borderBottomRightRadius: DESIGN.RADIUS.xl,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerContent: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  backButton: {
+    padding: DESIGN.SPACING.xs,
+  },
+  headerTextContainer: {
+    flex: 1,
+    alignItems: "center",
+  },
+  headerTitle: {
+    fontSize: DESIGN.TYPOGRAPHY.h1,
+    fontWeight: "700",
+    color: DESIGN.COLORS.white,
+    marginBottom: DESIGN.SPACING.xs / 2,
+  },
+  headerSubtitle: {
+    fontSize: DESIGN.TYPOGRAPHY.caption,
+    color: "rgba(255, 255, 255, 0.85)",
+    fontWeight: "500",
+  },
+  headerPlaceholder: {
+    width: scale(28),
   },
 });
 

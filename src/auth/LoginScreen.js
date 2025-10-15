@@ -224,184 +224,245 @@ const LoginScreen = () => {
     }
   };
 
-  const handleGoogleSignIn = async () => {
-    if (!isGoogleConfigured) {
-      Alert.alert(
-        "Please Wait",
-        "Google Sign-In is initializing. Please try again."
+  // const handleGoogleSignIn = async () => {
+  //   if (!isGoogleConfigured) {
+  //     Alert.alert(
+  //       "Please Wait",
+  //       "Google Sign-In is initializing. Please try again."
+  //     );
+  //     return;
+  //   }
+
+  //   setGoogleLoading(true);
+
+  //   try {
+  //     // Step 1: Sign out first to ensure clean state
+  //     try {
+  //       await GoogleSignin.signOut();
+  //       console.log("🧹 Previous session cleaned");
+  //     } catch (e) {
+  //       console.warn("⚠️ Clean session attempt:", e.message);
+  //     }
+
+  //     // Step 2: Check Play Services (Android)
+  //     if (Platform.OS === "android") {
+  //       await GoogleSignin.hasPlayServices({
+  //         showPlayServicesUpdateDialog: true,
+  //       });
+  //     }
+
+  //     // Step 3: Start fresh sign in
+  //     console.log("🔐 Starting Google Sign-In...");
+  //     // const userInfo = await GoogleSignin.signIn();
+  //     const signInResponse = await GoogleSignin.signIn();
+  //        const uniqueUserId = googleData.sub;
+  //     const email = googleData.email || "";
+
+  //     console.log("userInfo structure:", userInfo);
+
+  //     // Validate response
+  //     if (!userInfo) {
+  //       throw new Error("No userInfo returned from GoogleSignin.signIn()");
+  //     }
+
+  //     if (!userInfo.user) {
+  //       throw new Error("No user object in userInfo");
+  //     }
+
+  //     // const user = userInfo.user;
+  //     // const idToken = userInfo.idToken;
+
+  //     if (!user.email) {
+  //       throw new Error("No email in user object");
+  //     }
+
+  //     console.log("✅ Google Sign-In successful:", user.email);
+
+  //     // Step 4: Backend login
+  //     try {
+  //       console.log("🔄 Calling backend login...");
+  //       const loginRes = await apiClient.post(
+  //         API_CONFIG.endpoints.googleLogin,
+  //         {
+  //           email: email,
+  //           google_token: uniqueUserId,
+  //           role: "pet",
+  //         }
+  //       );
+
+  //       const loginData = loginRes.data || {};
+  //       const userFromApi =
+  //         loginData.user || loginData.data?.user || loginData.data;
+  //       const token =
+  //         loginData.token || loginData.accessToken || loginData.data?.token;
+  //       const chatRoomToken =
+  //         loginData.chat_room?.token ||
+  //         loginData.sessionToken ||
+  //         loginData.data?.SessionToken ||
+  //         null;
+
+  //       if (userFromApi && token) {
+  //         console.log("✅ Backend login successful");
+  //         await login(userFromApi, token, chatRoomToken);
+
+  //         const profileKey = userFromApi?.id
+  //           ? `profileCompleted:${userFromApi.id}`
+  //           : null;
+  //         if (profileKey) {
+  //           await AsyncStorage.setItem(profileKey, "true");
+  //         }
+
+  //         updateUser({ ...userFromApi, role: "pet", profileCompleted: true });
+  //         Alert.alert("Success", "Login successful! Welcome back.");
+  //         navigation.navigate("HomePage");
+  //       } else {
+  //         throw new Error("Invalid response from server");
+  //       }
+  //     } catch (backendError) {
+  //       console.error("❌ Backend login error:", backendError.response?.data);
+
+  //       // Try alternative method
+  //       if (
+  //         backendError.response?.status === 401 ||
+  //         backendError.response?.status === 400
+  //       ) {
+  //         try {
+  //           console.log("🔄 Trying alternative login method...");
+  //           const altRes = await apiClient.post(
+  //             API_CONFIG.endpoints.googleLogin,
+  //             {
+  //               email: user.email,
+  //               google_token: user.id,
+  //               role: "pet",
+  //             }
+  //           );
+
+  //           const altData = altRes.data || {};
+  //           const altUser = altData.user || altData.data?.user;
+  //           const altToken = altData.token || altData.accessToken;
+
+  //           if (altUser && altToken) {
+  //             console.log("✅ Alternative login successful");
+  //             await login(altUser, altToken);
+
+  //             const profileKey = altUser?.id
+  //               ? `profileCompleted:${altUser.id}`
+  //               : null;
+  //             if (profileKey) {
+  //               await AsyncStorage.setItem(profileKey, "true");
+  //             }
+
+  //             updateUser({ ...altUser, role: "pet", profileCompleted: true });
+  //             Alert.alert("Success", "Login successful! Welcome back.");
+  //             navigation.navigate("HomePage");
+  //           } else {
+  //             throw new Error("Invalid response from alternative method");
+  //           }
+  //         } catch (altError) {
+  //           console.error(
+  //             "❌ Alternative method failed:",
+  //             altError.response?.data
+  //           );
+  //           Alert.alert(
+  //             "Account Not Found",
+  //             "This Google account is not registered. Please sign up first."
+  //           );
+  //         }
+  //       } else {
+  //         const errorMessage = handleApiError(backendError, "Google login");
+  //         Alert.alert("Login Failed", errorMessage);
+  //       }
+  //     }
+  //   } catch (error) {
+  //     console.error("❌ Google Sign-In Error:", error);
+
+  //     if (error.code === statusCodes.SIGN_IN_CANCELLED) {
+  //       console.log("ℹ️ User cancelled Google Sign-In");
+  //       return;
+  //     }
+
+  //     if (error.code === statusCodes.IN_PROGRESS) {
+  //       Alert.alert("Please Wait", "Sign-in is already in progress");
+  //       return;
+  //     }
+
+  //     if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+  //       Alert.alert(
+  //         "Google Play Services",
+  //         "Google Play Services is not available or outdated"
+  //       );
+  //       return;
+  //     }
+
+  //     const errorMessage =
+  //       error.message || "An error occurred during Google Sign-In";
+  //     Alert.alert("Sign-In Error", errorMessage);
+  //   } finally {
+  //     setGoogleLoading(false);
+  //   }
+  // };
+
+const handleGoogleSignIn = async () => {
+  if (!isGoogleConfigured) {
+    Alert.alert("Please Wait", "Google Sign-In is initializing. Please try again.");
+    return;
+  }
+
+  setGoogleLoading(true);
+
+  try {
+    await GoogleSignin.signOut().catch(() => {});
+
+    if (Platform.OS === "android") {
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
+    }
+
+    const userInfo = await GoogleSignin.signIn();
+    console.log("userInfo:", userInfo);
+
+    // Access the user correctly
+    const user = userInfo.data?.user;
+    const idToken = userInfo.data?.idToken;
+
+    if (!user) throw new Error("No user object returned from Google Sign-In");
+
+    const email = user.email;
+    const googleId = user.id;
+
+    if (!email) throw new Error("Email not found in Google user object");
+
+    // Call backend
+    const loginRes = await apiClient.post(API_CONFIG.endpoints.googleLogin, {
+      email,
+      google_token: googleId, // send Google user id
+      role: "pet",
+    });
+
+    const { user: backendUser, token, chat_room } = loginRes.data;
+
+    if (backendUser && token) {
+      await login(backendUser, token, chat_room?.token || null);
+
+      await AsyncStorage.setItem(
+        `profileCompleted:${backendUser.id}`,
+        "true"
       );
-      return;
+
+      updateUser({ ...backendUser, role: "pet", profileCompleted: true });
+      // Alert.alert("Success", "Login successful! Welcome back.");
+      navigation.navigate("HomePage");
+    } else {
+      throw new Error("Invalid response from server");
     }
+  } catch (error) {
+    console.error("❌ Google Sign-In Error:", error);
+    Alert.alert("Sign-In Error", error.message || "An error occurred during Google Sign-In");
+  } finally {
+    setGoogleLoading(false);
+  }
+};
 
-    setGoogleLoading(true);
 
-    try {
-      // Step 1: Sign out first to ensure clean state
-      try {
-        await GoogleSignin.signOut();
-        console.log("🧹 Previous session cleaned");
-      } catch (e) {
-        console.warn("⚠️ Clean session attempt:", e.message);
-      }
-
-      // Step 2: Check Play Services (Android)
-      if (Platform.OS === "android") {
-        await GoogleSignin.hasPlayServices({
-          showPlayServicesUpdateDialog: true,
-        });
-      }
-
-      // Step 3: Start fresh sign in
-      console.log("🔐 Starting Google Sign-In...");
-      // const userInfo = await GoogleSignin.signIn();
-      const signInResponse = await GoogleSignin.signIn();
-      const userInfo = signInResponse.data;
-      const idToken = signInResponse.data.idToken;
-      const user = signInResponse.data.user;
-
-      console.log("userInfo structure:", userInfo);
-
-      // Validate response
-      if (!userInfo) {
-        throw new Error("No userInfo returned from GoogleSignin.signIn()");
-      }
-
-      if (!userInfo.user) {
-        throw new Error("No user object in userInfo");
-      }
-
-      // const user = userInfo.user;
-      // const idToken = userInfo.idToken;
-
-      if (!user.email) {
-        throw new Error("No email in user object");
-      }
-
-      console.log("✅ Google Sign-In successful:", user.email);
-
-      // Step 4: Backend login
-      try {
-        console.log("🔄 Calling backend login...");
-        const loginRes = await apiClient.post(
-          API_CONFIG.endpoints.googleLogin,
-          {
-            email: user.email,
-            google_token: idToken,
-            role: "pet",
-          }
-        );
-
-        const loginData = loginRes.data || {};
-        const userFromApi =
-          loginData.user || loginData.data?.user || loginData.data;
-        const token =
-          loginData.token || loginData.accessToken || loginData.data?.token;
-        const chatRoomToken =
-          loginData.chat_room?.token ||
-          loginData.sessionToken ||
-          loginData.data?.SessionToken ||
-          null;
-
-        if (userFromApi && token) {
-          console.log("✅ Backend login successful");
-          await login(userFromApi, token, chatRoomToken);
-
-          const profileKey = userFromApi?.id
-            ? `profileCompleted:${userFromApi.id}`
-            : null;
-          if (profileKey) {
-            await AsyncStorage.setItem(profileKey, "true");
-          }
-
-          updateUser({ ...userFromApi, role: "pet", profileCompleted: true });
-          Alert.alert("Success", "Login successful! Welcome back.");
-          navigation.navigate("HomePage");
-        } else {
-          throw new Error("Invalid response from server");
-        }
-      } catch (backendError) {
-        console.error("❌ Backend login error:", backendError.response?.data);
-
-        // Try alternative method
-        if (
-          backendError.response?.status === 401 ||
-          backendError.response?.status === 400
-        ) {
-          try {
-            console.log("🔄 Trying alternative login method...");
-            const altRes = await apiClient.post(
-              API_CONFIG.endpoints.googleLogin,
-              {
-                email: user.email,
-                google_token: user.id,
-                role: "pet",
-              }
-            );
-
-            const altData = altRes.data || {};
-            const altUser = altData.user || altData.data?.user;
-            const altToken = altData.token || altData.accessToken;
-
-            if (altUser && altToken) {
-              console.log("✅ Alternative login successful");
-              await login(altUser, altToken);
-
-              const profileKey = altUser?.id
-                ? `profileCompleted:${altUser.id}`
-                : null;
-              if (profileKey) {
-                await AsyncStorage.setItem(profileKey, "true");
-              }
-
-              updateUser({ ...altUser, role: "pet", profileCompleted: true });
-              Alert.alert("Success", "Login successful! Welcome back.");
-              navigation.navigate("HomePage");
-            } else {
-              throw new Error("Invalid response from alternative method");
-            }
-          } catch (altError) {
-            console.error(
-              "❌ Alternative method failed:",
-              altError.response?.data
-            );
-            Alert.alert(
-              "Account Not Found",
-              "This Google account is not registered. Please sign up first."
-            );
-          }
-        } else {
-          const errorMessage = handleApiError(backendError, "Google login");
-          Alert.alert("Login Failed", errorMessage);
-        }
-      }
-    } catch (error) {
-      console.error("❌ Google Sign-In Error:", error);
-
-      if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-        console.log("ℹ️ User cancelled Google Sign-In");
-        return;
-      }
-
-      if (error.code === statusCodes.IN_PROGRESS) {
-        Alert.alert("Please Wait", "Sign-in is already in progress");
-        return;
-      }
-
-      if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-        Alert.alert(
-          "Google Play Services",
-          "Google Play Services is not available or outdated"
-        );
-        return;
-      }
-
-      const errorMessage =
-        error.message || "An error occurred during Google Sign-In";
-      Alert.alert("Sign-In Error", errorMessage);
-    } finally {
-      setGoogleLoading(false);
-    }
-  };
 
   const validateForm = () => {
     let valid = true;

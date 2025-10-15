@@ -146,7 +146,7 @@ const AboutAppScreen = ({ navigation }) => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#f8f9fa',
+    backgroundColor: '#F0F4FF',
   },
   contentContainer: {
     paddingBottom: 30,

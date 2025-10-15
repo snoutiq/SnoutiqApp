@@ -1,20 +1,20 @@
-import React, { useState, useMemo, useCallback } from "react";
+import { Ionicons } from "@expo/vector-icons";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useCallback, useMemo, useState } from "react";
 import {
-  Modal,
-  View,
-  Text,
-  FlatList,
-  TouchableOpacity,
-  Image,
-  StyleSheet,
   ActivityIndicator,
   Dimensions,
+  FlatList,
+  Image,
+  Modal,
   ScrollView,
   Share,
   StatusBar,
+  StyleSheet,
+  Text,
+  TouchableOpacity,
+  View,
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { LinearGradient } from "expo-linear-gradient";
 
 const { width, height } = Dimensions.get("window");
 
@@ -284,7 +284,7 @@ const LiveDoctorSelectionModal = React.memo(
             >
               {/* Doctor Card */}
               <LinearGradient
-                colors={["#7C3AED", "#EC4899"]}
+                colors={["#667eea", "#764ba2"]}
                 style={styles.profileDoctorCard}
               >
                 <View style={styles.profileAvatarContainer}>

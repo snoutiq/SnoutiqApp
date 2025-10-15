@@ -37,6 +37,9 @@ import DoctorAppointmentModal from "../components/DoctorAppointmentModal";
 import ChangePasswordScreen from "../components/ChangePasswordScreen";
 import HelpCenter from "../components/HelpCenterScreen";
 import RatingScreen from "../PetComponent/RatingScreen";
+import ContactUsScreen from "../components/ContactUsScreen";
+import PrivacyPolicyScreen from "../components/PrivacyPolicyScreen";
+import TermsScreen from "../components/TermsScreen";
 
 
 const Stack = createNativeStackNavigator();
@@ -139,6 +142,9 @@ const MainStack = () => {
       <Stack.Screen name="ChangePassword" component={ChangePasswordScreen}/>
       <Stack.Screen name="HelpCenter" component={HelpCenter}/>
        <Stack.Screen name="RatingScreen" component={RatingScreen} />
+       <Stack.Screen name="ContactUs" component={ContactUsScreen}/>
+       <Stack.Screen name="privacypolicy" component={PrivacyPolicyScreen}/>
+       <Stack.Screen name="Terms" component={TermsScreen}/>
     </Stack.Navigator>
   );
 };

@@ -1,22 +1,20 @@
-import React, { useEffect, useState } from "react";
-import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
 import { Ionicons } from "@expo/vector-icons";
+import { createBottomTabNavigator } from "@react-navigation/bottom-tabs";
+import { LinearGradient } from "expo-linear-gradient";
+import React, { useEffect, useState } from "react";
 import {
-  StyleSheet,
-  View,
-  Platform,
-  Keyboard,
   Animated,
   Dimensions,
+  Keyboard,
+  Platform,
+  StyleSheet,
+  View,
 } from "react-native";
 
-import HomePage from "../components/HomePage";
-import SocialMedia from "../components/SocialMedia";
-import Chat from "../components/Chat";
-import CommunityScreen from "../components/CommunityScreen";
-import ProfileScreen from "../components/ProfileScreen";
-import PetServices from "../components/PetServices";
 import AppointmentScreen from "../components/AppointmentScreen";
+import Chat from "../components/Chat";
+import HomePage from "../components/HomePage";
+import ProfileScreen from "../components/ProfileScreen";
 
 const Tab = createBottomTabNavigator();
 const { width } = Dimensions.get("window");
@@ -74,7 +72,7 @@ export default function MainTabNavigator() {
   const getTabBarIcon = (routeName, focused, color) => {
     const iconConfig = {
       Home: {
-        icon: focused ? "home" : "home-outline",
+        icon: focused ? "medical" : "medical-outline",
         label: "Home",
         gradient: ["#FF6B6B", "#FF8E8E"],
       },
@@ -109,19 +107,27 @@ export default function MainTabNavigator() {
 
     return (
       <View style={styles.iconContainer}>
-        <View
+        <Animated.View
           style={[
             styles.iconWrapper,
             focused && styles.iconWrapperFocused,
-            focused && { backgroundColor: config.gradient[0] + "20" },
+            focused && { transform: [{ translateY: -6 }, { scale: 1.06 }] },
           ]}
         >
+          {focused && (
+            <LinearGradient
+              colors={[config.gradient[0] + "33", config.gradient[1] + "18"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.focusGlow}
+            />
+          )}
           <Ionicons
             name={config.icon}
-            size={focused ? 26 : 24}
+            size={focused ? 28 : 24}
             color={focused ? config.gradient[0] : color}
           />
-        </View>
+        </Animated.View>
         {focused && (
           <View
             style={[
@@ -138,6 +144,7 @@ export default function MainTabNavigator() {
     <Tab.Navigator
       screenOptions={({ route }) => ({
         headerShown: false,
+        
         tabBarIcon: ({ focused, color }) =>
           getTabBarIcon(route.name, focused, color),
         tabBarActiveTintColor: "#FF6B6B",
@@ -166,28 +173,18 @@ export default function MainTabNavigator() {
             bottom: isKeyboardVisible ? (Platform.OS === "ios" ? -10 : -5) : 0,
           },
         ],
+        tabBarBackground: () => (
+          <LinearGradient
+            colors={["#FFFFFF", "#F8FAFF"]}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 1 }}
+            style={StyleSheet.absoluteFillObject}
+          />
+        ),
       })}
     >
-      <Tab.Screen
-        name="Home"
-        component={HomePage}
-        options={{
-          tabBarLabel: ({ focused }) => (
-            <View style={styles.labelContainer}>
-              <Animated.Text
-                style={[
-                  styles.tabBarLabel,
-                  focused && styles.tabBarLabelActive,
-                  focused && { color: "#FF6B6B" },
-                ]}
-              >
-                Home
-              </Animated.Text>
-            </View>
-          ),
-        }}
-      />
-      <Tab.Screen
+   
+   <Tab.Screen
         name="Chat"
         component={Chat}
         options={{
@@ -207,6 +204,27 @@ export default function MainTabNavigator() {
           ),
         }}
       />
+
+      <Tab.Screen
+        name="Home"
+        component={HomePage}
+        options={{
+          tabBarLabel: ({ focused }) => (
+            <View style={styles.labelContainer}>
+              <Animated.Text
+                style={[
+                  styles.tabBarLabel,
+                  focused && styles.tabBarLabelActive,
+                  focused && { color: "#FF6B6B" },
+                ]}
+              >
+                Services
+              </Animated.Text>
+            </View>
+          ),
+        }}
+      />
+     
       {/* <Tab.Screen
         name="Social"
         component={SocialMedia}
@@ -239,7 +257,7 @@ export default function MainTabNavigator() {
                   focused && { color: "#96CEB4" }
                 ]}
               >
-                Appointment
+                Health Records
               </Animated.Text>
             </View>
           )
@@ -289,25 +307,25 @@ export default function MainTabNavigator() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "rgba(255,255,255,0.94)",
     borderTopWidth: 0,
-    height: Platform.OS === "ios" ? 90 : 80,
-    paddingBottom: Platform.OS === "ios" ? 30 : 15,
-    paddingTop: 12,
+    height: Platform.OS === "ios" ? 92 : 82,
+    paddingBottom: Platform.OS === "ios" ? 28 : 14,
+    paddingTop: 10,
     shadowColor: "#000",
     shadowOffset: {
       width: 0,
-      height: -4,
+      height: -6,
     },
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    elevation: 12,
+    shadowOpacity: 0.12,
+    shadowRadius: 18,
+    elevation: 18,
     position: "absolute",
-    left: 16,
-    right: 16,
-    borderRadius: 24,
+    left: 12,
+    right: 12,
+    borderRadius: 28,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: "#E9EEF6",
   },
   tabBarItem: {
     paddingVertical: 6,
@@ -333,20 +351,26 @@ const styles = StyleSheet.create({
     position: "relative",
   },
   iconWrapper: {
-    width: 44,
-    height: 44,
-    borderRadius: 16,
+    width: 48,
+    height: 48,
+    borderRadius: 18,
     alignItems: "center",
     justifyContent: "center",
     backgroundColor: "transparent",
-    transition: "all 0.3s ease",
+    overflow: "hidden",
   },
   iconWrapperFocused: {
-    // shadowColor: '#000',
-    // shadowOffset: { width: 0, height: 2 },
-    // shadowOpacity: 0.1,
-    // shadowRadius: 4,
-    // elevation: 3,
+    backgroundColor: "rgba(255,255,255,0.9)",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.12,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  focusGlow: {
+    ...StyleSheet.absoluteFillObject,
+    borderRadius: 18,
+    opacity: 1,
   },
   activeIndicator: {
     width: 4,

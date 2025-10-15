@@ -7,23 +7,24 @@ import {
   Dimensions,
   FlatList,
   Modal,
+  PixelRatio,
   ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
   View,
-  PixelRatio,
 } from "react-native";
 import { Calendar } from "react-native-calendars";
 import RazorpayCheckout from "react-native-razorpay";
 import { AuthContext } from "../context/AuthContext";
+import axios from "axios";
 
 const { width, height } = Dimensions.get("window");
 
 // Enhanced responsive scaling functions
 const scale = (size) => (width / 375) * size;
 const verticalScale = (size) => (height / 667) * size;
-const moderateScale = (size, factor = 0.5) => 
+const moderateScale = (size, factor = 0.5) =>
   size + (scale(size) - size) * factor;
 
 // Font scaling that respects accessibility settings
@@ -53,18 +54,24 @@ const SPACING = {
 };
 
 const RAZORPAY_KEY_ID = "rzp_test_1nhE9190sR3rkP";
+const API_BASE_URL = "https://snoutiq.com/backend/api";
 
 const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
+  const [selectedClinic, setSelectedClinic] = useState(null);
+  const [clinicDoctors, setClinicDoctors] = useState([]);
   const [selectedDoctor, setSelectedDoctor] = useState(null);
+  const [doctorAvailability, setDoctorAvailability] = useState([]);
   const [selectedDate, setSelectedDate] = useState(null);
   const [availableTimes, setAvailableTimes] = useState([]);
   const [selectedTime, setSelectedTime] = useState(null);
   const [selectedServices, setSelectedServices] = useState([]);
   const [step, setStep] = useState(1);
   const [loading, setLoading] = useState(false);
+  const [pets, setPets] = useState([]);
+  const [summary, setSummary] = useState("");
+  const [selectedPet, setSelectedPet] = useState(null);
 
-  const { nearbyDoctors, fetchNearbyDoctors, user, token } =
-    useContext(AuthContext);
+  const { nearbyDoctors, user, token } = useContext(AuthContext);
 
   const availableServices = [
     { id: 1, name: "General Consultation", price: 800, duration: 30 },
@@ -73,20 +80,100 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
     { id: 4, name: "Grooming", price: 1000, duration: 60 },
   ];
 
-  const processedDoctors =
-    nearbyDoctors?.map((doctor) => ({
-      id: doctor.id,
-      name: doctor.vet_name || doctor.name || "Veterinary Clinic",
-      specialty: "Veterinary Doctor",
-      rating: parseFloat(doctor.rating) || 4.8,
-      experience: "5+ years",
-      address: doctor.vet_address || doctor.formatted_address || doctor.address,
-      mobile: doctor.mobile,
-      email: doctor.email,
-      chat_price: doctor.chat_price || "500.00",
-      open_now: doctor.open_now,
-      user_ratings_total: doctor.user_ratings_total || 0,
-      photos: doctor.photos ? JSON.parse(doctor.photos) : [],
+ const fetchPets = async () => {
+    setLoading(true);
+    try {
+      const response = await axios.get(
+        `https://snoutiq.com/backend/api/users/${user.id}/pets`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          timeout: 5000,
+        }
+      );
+
+      if (
+        response.data.status === "success" &&
+        Array.isArray(response.data.data)
+      ) {
+        const transformedPets = response.data.data.map((pet) => ({
+          id: pet.id,
+          name: pet.name || "Unknown Pet",
+          age: pet.pet_age || 0,
+          gender: pet.pet_gender || "",
+          breed: pet.breed || "Pet",
+          avatar: pet.pet_doc1,
+          petType: pet.breed?.toLowerCase().includes("cat") ? "cat" : "dog",
+          weight: pet.weight || "",
+        }));
+
+        setPets(transformedPets);
+
+        // ✅ Automatically select first pet if none selected
+        if (transformedPets.length > 0 && !selectedPet) {
+          setSelectedPet(transformedPets[0]);
+        }
+      } else {
+        setPets([]);
+      }
+    } catch (error) {
+      console.error("Error fetching pets:", error);
+      setPets([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchPets();
+  }, []);
+
+  const fetchAISummary = async () => {
+    setLoading(true); // optional: show loader while fetching
+    try {
+      const response = await axios.get(
+        `https://snoutiq.com/backend/api/ai/summary?user_id=${user.id}`,
+        {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          timeout: 10000,
+        }
+      );
+
+      if (response.data?.success) {
+        // Data exists, update state
+        setSummary(response.data.summary || "No summary available");
+      } else {
+        setSummary("No summary available");
+      }
+    } catch (error) {
+      setSummary("Failed to load summary");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // useEffect
+  useEffect(() => {
+    fetchAISummary();
+  }, []);
+
+  // Process nearby doctors as clinics
+  const processedClinics =
+    nearbyDoctors?.map((clinic) => ({
+      id: clinic.id,
+      name: clinic.vet_name || clinic.name || "Veterinary Clinic",
+      rating: parseFloat(clinic.rating) || 4.8,
+      address: clinic.vet_address || clinic.formatted_address || clinic.address,
+      mobile: clinic.mobile,
+      email: clinic.email,
+      open_now: clinic.open_now,
+      user_ratings_total: clinic.user_ratings_total || 0,
+      photos: clinic.photos ? JSON.parse(clinic.photos) : [],
     })) || [];
 
   useEffect(() => {
@@ -96,7 +183,10 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
   }, [visible]);
 
   const resetForm = () => {
+    setSelectedClinic(null);
+    setClinicDoctors([]);
     setSelectedDoctor(null);
+    setDoctorAvailability([]);
     setSelectedDate(null);
     setSelectedTime(null);
     setSelectedServices([]);
@@ -104,45 +194,225 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
     setAvailableTimes([]);
   };
 
-  const handleDoctorSelect = (doctor) => {
-    setSelectedDoctor(doctor);
-    setStep(2);
-  };
+const handleClinicSelect = async (clinic) => {
+  setSelectedClinic(clinic);
+  setLoading(true); // show loader immediately
 
-  const handleDateSelect = (day) => {
-    setSelectedDate(day.dateString);
-    generateTimeSlots(day.dateString);
-    setStep(3);
-  };
+  // 🕒 Give React time to render loader
+  await new Promise((resolve) => setTimeout(resolve, 80));
 
-  const generateTimeSlots = (date) => {
-    const slots = [];
-    const startHour = 9;
-    const endHour = 18;
+  try {
+    const response = await fetch(`${API_BASE_URL}/clinics/${clinic.id}/doctors`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
 
-    for (let hour = startHour; hour < endHour; hour++) {
-      for (let minute = 0; minute < 60; minute += 30) {
-        const timeString = `${hour.toString().padStart(2, "0")}:${minute
-          .toString().padStart(2, "0")}`;
-        const displayTime = `${hour % 12 || 12}:${
-          minute === 0 ? "00" : minute
-        } ${hour < 12 ? "AM" : "PM"}`;
-        slots.push({
-          value: timeString,
-          display: displayTime,
-        });
-      }
+    const rawText = await response.text();
+    let cleaned = rawText.trim();
+    const firstBrace = Math.min(
+      cleaned.indexOf("{") === -1 ? Infinity : cleaned.indexOf("{"),
+      cleaned.indexOf("[") === -1 ? Infinity : cleaned.indexOf("[")
+    );
+    if (firstBrace > 0) cleaned = cleaned.slice(firstBrace);
+
+    let data;
+    try {
+      data = JSON.parse(cleaned);
+    } catch (parseError) {
+      Alert.alert("Error", "Server returned invalid data");
+      return;
     }
 
-    setAvailableTimes(slots);
-    setSelectedTime(null);
+    if (response.ok && data.doctors) {
+      setClinicDoctors(data.doctors);
+      // ✅ Move to next step only after doctors set
+      setStep(2);
+    } else {
+      console.warn("Unexpected API data:", data);
+      Alert.alert("Error", "Failed to fetch clinic doctors");
+    }
+  } catch (error) {
+    console.error("Error fetching doctors:", error);
+    Alert.alert("Error", "Failed to load doctors for this clinic");
+  } finally {
+    setLoading(false);
+  }
+};
+
+
+ 
+
+  // Step 2: Select Doctor
+
+  const handleDoctorSelect = async (doctor) => {
+    setSelectedDoctor(doctor);
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/clinics/${selectedClinic.id}/availability`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const rawText = await response.text();
+
+      let data;
+      try {
+        data = JSON.parse(rawText.trim());
+      } catch (parseError) {
+        console.error("Invalid JSON:", parseError, rawText);
+        Alert.alert("Error", "Invalid JSON from server");
+        return;
+      }
+
+      if (response.ok && data.availability) {
+        // Filter availability for selected doctor (video only)
+        const doctorAvail = data.availability.filter(
+          (avail) =>
+            avail.doctor_id === doctor.id && avail.service_type === "video"
+        );
+
+        setDoctorAvailability(doctorAvail);
+        setStep(3);
+      } else {
+        console.warn("Unexpected data format:", data);
+        Alert.alert("Error", "Failed to fetch doctor availability");
+      }
+    } catch (error) {
+      console.error("Error fetching doctor availability:", error);
+      Alert.alert("Error", "Failed to load doctor availability");
+    } finally {
+      setLoading(false);
+    }
   };
 
-  const handleTimeSelect = (time) => {
-    setSelectedTime(time);
+  // Step 3: Select Date
+  const handleDateSelect = (day) => {
+    setSelectedDate(day.dateString);
     setStep(4);
   };
 
+  // Step 4: Fetch available slots
+  // const fetchFreeSlots = async () => {
+  //   if (!selectedDate || !selectedDoctor) return;
+
+  //   setLoading(true);
+
+  //   try {
+  //     const response = await fetch(
+  //       `${API_BASE_URL}/doctors/${selectedDoctor.id}/free-slots?date=${selectedDate}&service_type=video`,
+  //       {
+  //         headers: {
+  //           Authorization: `Bearer ${token}`,
+  //         },
+  //       }
+  //     );
+
+  //     const rawText = await response.text();
+  //     console.log("Raw slot response:", rawText);
+
+  //     let data;
+  //     try {
+  //       data = JSON.parse(rawText.trim());
+  //     } catch (e) {
+  //       console.error("Invalid JSON in slot response:", e);
+  //       Alert.alert("Error", "Invalid response from server");
+  //       return;
+  //     }
+
+  //     console.log("Parsed slot data:", data);
+
+  //     if (response.ok && data.success && data.free_slots) {
+  //       const slots = data.free_slots.map((timeString) => {
+  //         const [hours, minutes] = timeString.split(":");
+  //         const hour = parseInt(hours, 10);
+  //         const displayTime = `${hour % 12 || 12}:${minutes} ${hour < 12 ? "AM" : "PM"}`;
+
+  //         return { value: timeString, display: displayTime };
+  //       });
+
+  //       setAvailableTimes(slots);
+  //     } else {
+  //       Alert.alert("No Slots Available", "No free slots for selected date");
+  //     }
+  //   } catch (error) {
+  //     console.error("Error fetching slots:", error);
+  //     Alert.alert("Error", "Failed to load available time slots");
+  //   } finally {
+  //     setLoading(false);
+  //   }
+  // };
+  
+  const fetchFreeSlots = async () => {
+    if (!selectedDate || !selectedDoctor) return;
+
+    setLoading(true);
+
+    try {
+      const response = await fetch(
+        `${API_BASE_URL}/doctors/${selectedDoctor.id}/free-slots?date=${selectedDate}&service_type=video`,
+        {
+          headers: {
+            Authorization: `Bearer ${token}`,
+          },
+        }
+      );
+
+      const rawText = await response.text();
+
+      let data;
+      try {
+        data = JSON.parse(rawText.trim());
+      } catch (e) {
+        console.error("Invalid JSON in slot response:", e);
+        Alert.alert("Error", "Invalid response from server");
+        return;
+      }
+
+
+      // ✅ Add mock slots if API returned none
+      if (data.free_slots && data.free_slots.length === 0) {
+        data.free_slots = ["09:00", "10:30", "12:00"]; // mock data for testing
+      }
+
+      if (response.ok && data.success && data.free_slots) {
+        const slots = data.free_slots.map((timeString) => {
+          const [hours, minutes] = timeString.split(":");
+          const hour = parseInt(hours, 10);
+          const displayTime = `${hour % 12 || 12}:${minutes} ${
+            hour < 12 ? "AM" : "PM"
+          }`;
+
+          return { value: timeString, display: displayTime };
+        });
+
+        setAvailableTimes(slots);
+      } else {
+        Alert.alert("No Slots Available", "No free slots for selected date");
+      }
+    } catch (error) {
+      console.error("Error fetching slots:", error);
+      Alert.alert("Error", "Failed to load available time slots");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (step === 4 && selectedDate && selectedDoctor) {
+      fetchFreeSlots();
+    }
+  }, [step, selectedDate, selectedDoctor]);
+
+  const handleTimeSelect = (time) => {
+    setSelectedTime(time);
+    setStep(5);
+  };
+
+  // Step 5: Service Selection
   const handleServiceToggle = (service) => {
     setSelectedServices((prev) => {
       const isSelected = prev.find((s) => s.service_id === service.id);
@@ -162,10 +432,7 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
 
   const calculateTotalAmount = () => {
     if (selectedServices.length === 0) {
-      const basePrice = selectedDoctor
-        ? parseFloat(selectedDoctor.chat_price) || 500
-        : 500;
-      return basePrice * 100;
+      return 80000; 
     }
 
     const total = selectedServices.reduce(
@@ -176,7 +443,7 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
   };
 
   const calculateDuration = () => {
-    if (selectedServices.length === 0) return 60;
+    if (selectedServices.length === 0) return 20;
 
     const totalMinutes = selectedServices.reduce((sum, service) => {
       const serviceData = availableServices.find(
@@ -185,29 +452,34 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
       return sum + (serviceData?.duration || 30);
     }, 0);
 
-    return Math.max(30, totalMinutes);
+    return Math.max(20, totalMinutes);
   };
 
   const getEndTime = () => {
     if (!selectedTime) return null;
 
-    const [hours, minutes] = selectedTime.value.split(":").map(Number);
+    const [hours, minutes, seconds] = selectedTime.value.split(":").map(Number);
     const duration = calculateDuration();
 
     const startDate = new Date();
-    startDate.setHours(hours, minutes, 0, 0);
+    startDate.setHours(hours, minutes, seconds || 0, 0);
 
     const endDate = new Date(startDate.getTime() + duration * 60000);
 
-    return endDate.toTimeString().slice(0, 5);
+    const endHours = endDate.getHours().toString().padStart(2, "0");
+    const endMinutes = endDate.getMinutes().toString().padStart(2, "0");
+    const endSeconds = endDate.getSeconds().toString().padStart(2, "0");
+
+    return `${endHours}:${endMinutes}:${endSeconds}`;
   };
 
-  const initiateRazorpayPayment = () => {
+  const initiateRazorpayPayment = async () => {
     if (!selectedDoctor || !selectedDate || !selectedTime) {
       Alert.alert(
         "Missing Information",
-        "Please complete all appointment details before proceeding to payment."
+        "Please complete all appointment details before proceeding."
       );
+      console.warn("❌ Missing doctor/date/time before payment");
       return;
     }
 
@@ -216,129 +488,232 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
         "Authentication Required",
         "Please log in to book an appointment."
       );
+      console.warn("❌ User not authenticated before payment");
       return;
     }
 
-    const amount = calculateTotalAmount();
-    const options = {
-      description: `Clinic Consultation with ${
-        selectedDoctor?.name || "Veterinarian"
-      }`,
-      image: "https://via.placeholder.com/100",
-      currency: "INR",
-      key: RAZORPAY_KEY_ID,
-      amount: amount,
-      name: "SnoutIQ",
-      prefill: {
-        email: user?.email || "user@example.com",
-        contact: user?.phone || user?.mobile || "9999999999",
-        name: user?.name || "Pet Owner",
-      },
-      theme: { color: "#0EA5E9" },
-      modal: {
-        ondismiss: () => {
-          console.log("Payment modal dismissed");
-        },
-      },
-    };
+    if (!selectedPet) {
+      Alert.alert(
+        "Select Pet",
+        "Please select a pet before booking an appointment."
+      );
+      console.warn("❌ Pet not selected");
+      return;
+    }
 
     setLoading(true);
 
-    RazorpayCheckout.open(options)
-      .then((data) => {
-        setLoading(false);
-        handlePaymentSuccess(data);
-      })
-      .catch((error) => {
-        setLoading(false);
-        handlePaymentFailure(error);
-      });
-  };
-
-  const handlePaymentSuccess = async (paymentData) => {
     try {
-      setLoading(true);
-
-      if (!selectedDoctor) {
-        throw new Error("Doctor information not found");
-      }
-
-      const appointmentData = {
-        customer_id: user?.id || user?.user_id,
-        date: selectedDate,
-        start_time: selectedTime.value + ":00",
-        end_time: getEndTime() + ":00",
-        services:
-          selectedServices.length > 0
-            ? selectedServices
-            : [
-                {
-                  service_id: 1,
-                  price: parseFloat(selectedDoctor?.chat_price) || 500,
-                },
-              ],
-        vet_id: selectedDoctor.id,
-        user_id: user?.id || user?.user_id,
-        total_amount: (calculateTotalAmount() / 100).toString(),
-        payment_id: paymentData.razorpay_payment_id,
-        payment_status: "completed",
+      // Step 1: Create booking
+      const bookingData = {
+        user_id: user.id,
+        clinic_id: selectedClinic?.id,
+        doctor_id: selectedDoctor?.id,
+        service_type: "video",
+        scheduled_date: selectedDate,
+        scheduled_time: selectedTime.value,
+        pet_id: selectedPet.id,
+        urgency: "medium",
+        ai_summary: (summary || "Video consultation booking").replace(
+          /\n/g,
+          " "
+        ),
+        ai_urgency_score: 0.45,
+        symptoms: ["consultation"],
+        latitude: 28.4949,
+        longitude: 77.0868,
+        address: selectedClinic?.address || "Clinic Address",
       };
 
-      const response = await fetch(
-        "https://snoutiq.com/backend/api/doctor/bookings",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(appointmentData),
-        }
-      );
+      const createResponse = await fetch(`${API_BASE_URL}/bookings/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(bookingData),
+      });
 
-      const data = await response.json();
+      // Get response text and clean it
+      let rawText = await createResponse.text();
 
-      if (response.ok) {
-        Alert.alert(
-          "Appointment Confirmed!",
-          data.message || "Booking successful",
-          [
-            {
-              text: "Great!",
-              onPress: onClose,
-            },
-          ]
-        );
-      } else {
-        throw new Error(data.message || "Failed to book appointment");
+      // Clean the response: trim whitespace and remove BOM
+      rawText = rawText.trim().replace(/^\uFEFF/, "");
+
+      // Extract JSON if response contains non-JSON prefix/suffix
+      const jsonMatch = rawText.match(/({.*}|\[.*\])/);
+      if (jsonMatch) {
+        rawText = jsonMatch[0];
+      } else if (!rawText.startsWith("{") && !rawText.startsWith("[")) {
+        console.error("❌ Response is not valid JSON:", rawText);
+        throw new Error("Booking API returned non-JSON response");
       }
+
+      let createData;
+      try {
+        createData = JSON.parse(rawText);
+      } catch (err) {
+        console.error(
+          "❌ Failed to parse booking JSON:",
+          err,
+          "Raw text:",
+          rawText
+        );
+        throw new Error("Booking API returned invalid JSON");
+      }
+
+      if (!createResponse.ok || !createData.success) {
+        throw new Error(createData.message || "Failed to create booking");
+      }
+
+      const { booking_id, payment } = createData;
+
+      if (!booking_id || !payment || !payment.order_id) {
+        throw new Error("Booking created but payment info missing");
+      }
+
+      const options = {
+        description: `Video Consultation with ${selectedDoctor.name}`,
+        image: "https://via.placeholder.com/100",
+        currency: payment.currency,
+        key: payment.key,
+        amount: payment.order.amount,
+        order_id: payment.order_id,
+        name: "SnoutIQ",
+        prefill: {
+          email: user.email || "user@example.com",
+          contact: user.phone || "9999999999",
+          name: user.name || "Pet Owner",
+        },
+        theme: { color: "#0EA5E9" },
+        modal: {
+          ondismiss: () => {
+            setLoading(false);
+          },
+        },
+      };
+
+      // Step 3: Open Razorpay
+      RazorpayCheckout.open(options)
+        .then((paymentData) => {
+          handlePaymentSuccess(paymentData, booking_id);
+        })
+        .catch((error) => {
+          console.error("❌ Razorpay payment failed:", error);
+          handlePaymentFailure(error);
+        });
     } catch (error) {
-      Alert.alert(
-        "Booking Issue",
-        error.message || "Something went wrong",
-        [{ text: "OK", onPress: onClose }]
-      );
-    } finally {
+      console.error("❌ Booking creation failed:", error);
+      Alert.alert("Booking Error", error.message || "Failed to create booking");
       setLoading(false);
     }
   };
 
-  const handlePaymentFailure = (error) => {
+const handlePaymentSuccess = async (paymentData, booking_id) => {
+  try {
+    setLoading(true);
+
+    // Prepare verification payload
+    const verifyPaymentData = {
+      razorpay_order_id: paymentData.razorpay_order_id,
+      razorpay_payment_id: paymentData.razorpay_payment_id,
+      razorpay_signature: paymentData.razorpay_signature,
+    };
+
+    // Call verification API
+    const verifyResponse = await fetch(
+      `${API_BASE_URL}/bookings/${booking_id}/verify-payment`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(verifyPaymentData),
+      }
+    );
+
+    // Read raw text
+    const verifyRawText = await verifyResponse.text();
+
+    // Clean and extract JSON safely
+    let cleaned = verifyRawText.trim().replace(/^\uFEFF/, "");
+    const jsonMatch = cleaned.match(/({.*}|\[.*\])/s); 
+    if (jsonMatch) {
+      cleaned = jsonMatch[0];
+    } else {
+      console.error("❌ Verify response is not JSON:", cleaned);
+      throw new Error("Payment verification returned invalid JSON");
+    }
+
+    // Parse JSON
+    let verifyData;
+    try {
+      verifyData = JSON.parse(cleaned);
+    } catch (err) {
+      console.error("❌ Failed to parse payment verification JSON:", err, cleaned);
+      throw new Error("Invalid JSON from payment verification");
+    }
+
+    // Check verification result
+    if (!verifyResponse.ok || !verifyData.success) {
+      throw new Error(verifyData.message || "Payment verification failed");
+    }
+
+    // Success alert
     Alert.alert(
-      "Payment Failed",
-      "We couldn't process your payment. Please try again or use a different payment method.",
+      "🎉 Appointment Confirmed!",
+      "Your video consultation has been booked successfully. You will receive a confirmation shortly.",
       [
         {
-          text: "Try Again",
-          onPress: () => initiateRazorpayPayment(),
-        },
-        {
-          text: "Cancel",
-          style: "cancel",
-          onPress: () => setStep(4),
+          text: "Great!",
+          onPress: () => {
+            onClose?.();
+            onBook?.(); // Make sure this navigates correctly
+        if (navigation.canGoBack()) navigation.pop(3);
+          },
         },
       ]
     );
+
+  } catch (error) {
+    console.error("❌ Payment Verification Error:", error);
+    Alert.alert(
+      "Payment Verification Issue",
+      "Payment was successful but verification failed. Please contact support with your booking ID: " + booking_id,
+      [
+        {
+          text: "OK",
+          onPress: () => {
+            onClose?.();
+            onBook?.(); // fallback navigation
+             if (navigation.canGoBack()) navigation.pop(3);
+          },
+        },
+      ]
+    );
+  } finally {
+    setLoading(false);
+  }
+};
+
+  const handlePaymentFailure = (error) => {
+    console.error("❌ Payment failed:", error);
+
+    let errorMessage = "The payment was cancelled or failed. Please try again.";
+
+    if (error.description) {
+      errorMessage = error.description;
+    } else if (error.code === 2) {
+      errorMessage = "Network error. Please check your internet connection.";
+    } else if (error.code === 4) {
+      errorMessage = "Payment processing failed. Please try again.";
+    } else if (error.code) {
+      errorMessage = `Payment error: ${error.code}`;
+    }
+
+    Alert.alert("Payment Failed", errorMessage);
+    setLoading(false);
   };
 
   const renderStepIndicator = () => (
@@ -354,7 +729,7 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
             ]}
           >
             {step > stepNumber ? (
-              <Ionicons name="checkmark" size={scale(16)} color="#FFFFFF" />
+              <Ionicons name="checkmark" size={scale(14)} color="#FFFFFF" />
             ) : (
               <Text
                 style={[
@@ -386,37 +761,40 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
   const renderStepLabels = () => (
     <View style={styles.stepLabels}>
       <Text style={[styles.stepLabel, step >= 1 && styles.stepLabelActive]}>
-        Doctor
+        Clinic
       </Text>
       <Text style={[styles.stepLabel, step >= 2 && styles.stepLabelActive]}>
-        Date
+        Doctor
       </Text>
       <Text style={[styles.stepLabel, step >= 3 && styles.stepLabelActive]}>
-        Time
+        Date
       </Text>
       <Text style={[styles.stepLabel, step >= 4 && styles.stepLabelActive]}>
-        Services
+        Time
       </Text>
+      {/* <Text style={[styles.stepLabel, step >= 5 && styles.stepLabelActive]}>
+        Services
+      </Text> */}
       <Text style={[styles.stepLabel, step >= 5 && styles.stepLabelActive]}>
-        Confirm
+        Pay
       </Text>
     </View>
   );
 
-  const renderDoctorSelection = () => (
+  const renderClinicSelection = () => (
     <View style={styles.stepContent}>
-      <Text style={styles.stepTitle}>Select Veterinarian</Text>
+      <Text style={styles.stepTitle}>Select Clinic</Text>
       <Text style={styles.stepSubtitle}>Choose your preferred clinic</Text>
 
-      {processedDoctors.length === 0 ? (
+      {processedClinics.length === 0 ? (
         <View style={styles.emptyState}>
-          <Ionicons name="medkit-outline" size={scale(64)} color="#CBD5E1" />
-          <Text style={styles.emptyStateText}>No veterinarians available</Text>
+          <Ionicons name="medical-outline" size={scale(64)} color="#CBD5E1" />
+          <Text style={styles.emptyStateText}>No clinics available</Text>
           <Text style={styles.emptyStateSubtext}>Please try again later</Text>
         </View>
       ) : (
         <FlatList
-          data={processedDoctors}
+          data={processedClinics}
           keyExtractor={(item) => item.id.toString()}
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.doctorList}
@@ -424,22 +802,17 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
             <TouchableOpacity
               style={[
                 styles.doctorCard,
-                selectedDoctor?.id === item.id && styles.doctorCardSelected,
+                selectedClinic?.id === item.id && styles.doctorCardSelected,
               ]}
-              onPress={() => handleDoctorSelect(item)}
+              onPress={() => handleClinicSelect(item)}
+              disabled={loading}
             >
               <View style={styles.doctorAvatar}>
                 <LinearGradient
                   colors={["#0EA5E9", "#0284C7"]}
                   style={styles.avatarGradient}
                 >
-                  <Text style={styles.avatarText}>
-                    {item.name
-                      .split(" ")
-                      .map((n) => n[0])
-                      .join("")
-                      .toUpperCase()}
-                  </Text>
+                  <Ionicons name="medical" size={scale(24)} color="#FFFFFF" />
                 </LinearGradient>
               </View>
 
@@ -447,14 +820,12 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
                 <Text style={styles.doctorName} numberOfLines={2}>
                   {item.name}
                 </Text>
-                <Text style={styles.doctorSpecialty}>{item.specialty}</Text>
                 <View style={styles.ratingContainer}>
                   <Ionicons name="star" size={scale(14)} color="#F59E0B" />
                   <Text style={styles.ratingText}>{item.rating}</Text>
                   <Text style={styles.ratingCount}>
                     ({item.user_ratings_total})
                   </Text>
-                  <Text style={styles.experienceText}>• {item.experience}</Text>
                 </View>
                 <Text style={styles.doctorAddress} numberOfLines={2}>
                   {item.address}
@@ -471,13 +842,84 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
                   </Text>
                 </View>
               </View>
+            </TouchableOpacity>
+          )}
+        />
+      )}
+    </View>
+  );
 
-              <View style={styles.doctorMeta}>
-                <View style={styles.priceTag}>
-                  <Text style={styles.priceText}>₹{item.chat_price}</Text>
-                  <Text style={styles.priceSubtext}>Consultation</Text>
-                </View>
+  const renderDoctorSelection = () => (
+    <View style={styles.stepContent}>
+      <Text style={styles.stepTitle}>Select Doctor</Text>
+      <Text style={styles.stepSubtitle}>
+        Choose your preferred doctor at {selectedClinic?.name}
+      </Text>
+
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0EA5E9" />
+          <Text style={styles.loadingText}>Loading ...</Text>
+        </View>
+      ) : clinicDoctors.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="person-outline" size={scale(64)} color="#CBD5E1" />
+          <Text style={styles.emptyStateText}>No doctors available</Text>
+          <Text style={styles.emptyStateSubtext}>
+            Please try another clinic
+          </Text>
+        </View>
+      ) : (
+        <FlatList
+          data={clinicDoctors}
+          keyExtractor={(item) => item.id.toString()}
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.doctorList}
+          renderItem={({ item }) => (
+            <TouchableOpacity
+              style={[
+                styles.doctorCard,
+                selectedDoctor?.id === item.id && styles.doctorCardSelected,
+              ]}
+              onPress={() => handleDoctorSelect(item)}
+              disabled={loading}
+            >
+              <View style={styles.doctorAvatar}>
+                <LinearGradient
+                  colors={["#0EA5E9", "#0284C7"]}
+                  style={styles.avatarGradient}
+                >
+                  <Text style={styles.avatarText}>
+                    {item.name
+                      .split(" ")
+                      .map((n) => n[0])
+                      .join("")
+                      .toUpperCase()
+                      .slice(0, 2)}
+                  </Text>
+                </LinearGradient>
               </View>
+
+              <View style={styles.doctorInfo}>
+                <Text style={styles.doctorName} numberOfLines={2}>
+                  {item.name}
+                </Text>
+                <Text style={styles.doctorSpecialty}>Veterinary Doctor</Text>
+                {item.email && (
+                  <Text style={styles.doctorContact} numberOfLines={1}>
+                    {item.email}
+                  </Text>
+                )}
+                {item.phone && (
+                  <Text style={styles.doctorContact}>{item.phone}</Text>
+                )}
+              </View>
+
+              <Ionicons
+                name="chevron-forward"
+                size={scale(24)}
+                color="#64748B"
+              />
             </TouchableOpacity>
           )}
         />
@@ -489,8 +931,13 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
     <View style={styles.stepContent}>
       <Text style={styles.stepTitle}>Select Date</Text>
       <Text style={styles.stepSubtitle}>
-        Choose your preferred date for clinic visit
+        Choose your preferred date for video consultation
       </Text>
+
+      <View style={styles.doctorInfoBox}>
+        <Text style={styles.infoBoxLabel}>Doctor:</Text>
+        <Text style={styles.infoBoxValue}>{selectedDoctor?.name}</Text>
+      </View>
 
       <Calendar
         onDayPress={handleDateSelect}
@@ -537,42 +984,54 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
       <Text style={styles.stepTitle}>Select Time</Text>
       <Text style={styles.stepSubtitle}>Choose your preferred time slot</Text>
 
-      <View style={styles.clinicInfo}>
-        <Ionicons name="location" size={scale(20)} color="#0EA5E9" />
-        <Text style={styles.clinicAddress} numberOfLines={2}>
-          {selectedDoctor?.address}
-        </Text>
+      <View style={styles.doctorInfoBox}>
+        <Text style={styles.infoBoxLabel}>Date:</Text>
+        <Text style={styles.infoBoxValue}>{selectedDate}</Text>
       </View>
 
-      <ScrollView
-        style={styles.timeSlotsContainer}
-        showsVerticalScrollIndicator={false}
-      >
-        <Text style={styles.timeSlotsTitle}>Available Time Slots</Text>
-        <View style={styles.timeSlotsGrid}>
-          {availableTimes.map((time) => (
-            <TouchableOpacity
-              key={time.value}
-              style={[
-                styles.timeSlot,
-                selectedTime?.value === time.value && styles.timeSlotSelected,
-              ]}
-              onPress={() => handleTimeSelect(time)}
-            >
-              <Text
-                style={[
-                  styles.timeText,
-                  selectedTime?.value === time.value && styles.timeTextSelected,
-                ]}
-                adjustsFontSizeToFit
-                numberOfLines={1}
-              >
-                {time.display}
-              </Text>
-            </TouchableOpacity>
-          ))}
+      {loading ? (
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color="#0EA5E9" />
+          <Text style={styles.loadingText}>Loading available slots...</Text>
         </View>
-      </ScrollView>
+      ) : availableTimes.length === 0 ? (
+        <View style={styles.emptyState}>
+          <Ionicons name="time-outline" size={scale(64)} color="#CBD5E1" />
+          <Text style={styles.emptyStateText}>No slots available</Text>
+          <Text style={styles.emptyStateSubtext}>Please try another date</Text>
+        </View>
+      ) : (
+        <ScrollView
+          style={styles.timeSlotsContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          <Text style={styles.timeSlotsTitle}>Available Time Slots</Text>
+          <View style={styles.timeSlotsGrid}>
+            {availableTimes.map((time) => (
+              <TouchableOpacity
+                key={time.value}
+                style={[
+                  styles.timeSlot,
+                  selectedTime?.value === time.value && styles.timeSlotSelected,
+                ]}
+                onPress={() => handleTimeSelect(time)}
+              >
+                <Text
+                  style={[
+                    styles.timeText,
+                    selectedTime?.value === time.value &&
+                      styles.timeTextSelected,
+                  ]}
+                  adjustsFontSizeToFit
+                  numberOfLines={1}
+                >
+                  {time.display}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </View>
+        </ScrollView>
+      )}
     </View>
   );
 
@@ -583,7 +1042,7 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
         Choose the services you need (optional)
       </Text>
 
-      <ScrollView 
+      <ScrollView
         style={styles.servicesContainer}
         showsVerticalScrollIndicator={false}
       >
@@ -619,7 +1078,11 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
                   ]}
                 >
                   {isSelected && (
-                    <Ionicons name="checkmark" size={scale(16)} color="#FFFFFF" />
+                    <Ionicons
+                      name="checkmark"
+                      size={scale(16)}
+                      color="#FFFFFF"
+                    />
                   )}
                 </View>
               </View>
@@ -630,7 +1093,8 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
         {selectedServices.length === 0 && (
           <View style={styles.noServicesNote}>
             <Text style={styles.noServicesText}>
-              No services selected. Basic consultation fee will be applied.
+              No services selected. Basic consultation fee (₹500) will be
+              applied.
             </Text>
           </View>
         )}
@@ -647,8 +1111,7 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
 
       <TouchableOpacity
         style={styles.continueButton}
-        onPress={() => setStep(5)}
-        disabled={!selectedTime}
+        onPress={() => setStep(6)}
       >
         <LinearGradient
           colors={["#0EA5E9", "#0284C7"]}
@@ -662,19 +1125,29 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
   );
 
   const renderPayment = () => (
-    <ScrollView 
+    <ScrollView
       style={styles.stepContent}
       showsVerticalScrollIndicator={false}
       contentContainerStyle={styles.paymentScrollContent}
     >
       <Text style={styles.stepTitle}>Confirm Booking</Text>
       <Text style={styles.stepSubtitle}>
-        Review and complete your clinic appointment
+        Review and complete your video consultation
       </Text>
 
       <View style={styles.bookingSummary}>
         <View style={styles.summaryHeader}>
           <Text style={styles.summaryTitle}>Appointment Details</Text>
+        </View>
+
+        <View style={styles.clinicSummary}>
+          <Ionicons name="medical" size={scale(24)} color="#0EA5E9" />
+          <View style={styles.clinicSummaryInfo}>
+            <Text style={styles.summaryLabel}>Clinic</Text>
+            <Text style={styles.summaryClinicName} numberOfLines={2}>
+              {selectedClinic?.name}
+            </Text>
+          </View>
         </View>
 
         <View style={styles.doctorSummary}>
@@ -688,7 +1161,8 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
                   .split(" ")
                   .map((n) => n[0])
                   .join("")
-                  .toUpperCase()}
+                  .toUpperCase()
+                  .slice(0, 2)}
               </Text>
             </LinearGradient>
           </View>
@@ -696,13 +1170,7 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
             <Text style={styles.summaryDoctorName} numberOfLines={2}>
               {selectedDoctor?.name}
             </Text>
-            <Text style={styles.summarySpecialty}>Veterinary Clinic</Text>
-            <View style={styles.summaryRating}>
-              <Ionicons name="star" size={scale(14)} color="#F59E0B" />
-              <Text style={styles.summaryRatingText}>
-                {selectedDoctor?.rating}
-              </Text>
-            </View>
+            <Text style={styles.summarySpecialty}>Video Consultation</Text>
           </View>
         </View>
 
@@ -719,13 +1187,6 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
             <Text style={styles.summaryLabel}>Time</Text>
             <Text style={styles.summaryValue} numberOfLines={1}>
               {selectedTime?.display}
-            </Text>
-          </View>
-          <View style={styles.summaryRow}>
-            <Ionicons name="location" size={scale(18)} color="#64748B" />
-            <Text style={styles.summaryLabel}>Location</Text>
-            <Text style={styles.summaryValue} numberOfLines={2}>
-              {selectedDoctor?.address}
             </Text>
           </View>
 
@@ -792,7 +1253,7 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
             <>
               <Ionicons name="lock-closed" size={scale(20)} color="#FFFFFF" />
               <Text style={styles.payButtonText}>
-                Pay ₹{calculateTotalAmount() / 100}
+                Pay
               </Text>
             </>
           )}
@@ -830,7 +1291,7 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
               />
             </TouchableOpacity>
             <Text style={styles.modalTitle} numberOfLines={1}>
-              Book Clinic Appointment
+              Book Video Consultation
             </Text>
             <View style={styles.placeholder} />
           </View>
@@ -839,10 +1300,11 @@ const DoctorAppointmentModal = ({ visible, onClose, onBook }) => {
           {renderStepLabels()}
 
           <View style={styles.stepContainer}>
-            {step === 1 && renderDoctorSelection()}
-            {step === 2 && renderDateSelection()}
-            {step === 3 && renderTimeSelection()}
-            {step === 4 && renderServiceSelection()}
+            {step === 1 && renderClinicSelection()}
+            {step === 2 && renderDoctorSelection()}
+            {step === 3 && renderDateSelection()}
+            {step === 4 && renderTimeSelection()}
+            {/* {step === 5 && renderServiceSelection()} */}
             {step === 5 && renderPayment()}
           </View>
         </View>
@@ -895,7 +1357,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: SPACING.md,
+    paddingHorizontal: SPACING.xs,
     marginTop: SPACING.lg,
   },
   stepRow: {
@@ -903,9 +1365,9 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   stepCircle: {
-    width: scale(32),
-    height: scale(32),
-    borderRadius: scale(16),
+    width: scale(28),
+    height: scale(28),
+    borderRadius: scale(14),
     justifyContent: "center",
     alignItems: "center",
   },
@@ -916,7 +1378,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#E2E8F0",
   },
   stepText: {
-    fontSize: FONT_SIZES.medium,
+    fontSize: FONT_SIZES.small,
     fontWeight: "600",
   },
   stepTextActive: {
@@ -926,7 +1388,7 @@ const styles = StyleSheet.create({
     color: "#64748B",
   },
   stepLine: {
-    width: width < 360 ? scale(30) : scale(40),
+    width: width < 360 ? scale(20) : scale(30),
     height: 2,
     marginHorizontal: SPACING.xs,
   },
@@ -938,13 +1400,13 @@ const styles = StyleSheet.create({
   },
   stepLabels: {
     flexDirection: "row",
-    justifyContent: "space-between",
-    paddingHorizontal: SPACING.lg,
+    justifyContent: "space-evenly",
+    paddingHorizontal: SPACING.md,
     marginTop: SPACING.sm,
     marginBottom: SPACING.lg,
   },
   stepLabel: {
-    fontSize: FONT_SIZES.small,
+    fontSize: FONT_SIZES.tiny,
     color: "#94A3B8",
     fontWeight: "500",
   },
@@ -989,6 +1451,17 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
     textAlign: "center",
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: SPACING.xxl,
+  },
+  loadingText: {
+    fontSize: FONT_SIZES.medium,
+    color: "#64748B",
+    marginTop: SPACING.md,
+  },
   doctorList: {
     paddingBottom: SPACING.lg,
   },
@@ -1000,8 +1473,8 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
     borderWidth: 2,
     borderColor: "#F1F5F9",
-    alignItems: "flex-start",
-    minHeight: scale(120),
+    alignItems: "center",
+    minHeight: scale(100),
   },
   doctorCardSelected: {
     borderColor: "#0EA5E9",
@@ -1038,6 +1511,11 @@ const styles = StyleSheet.create({
     color: "#64748B",
     marginBottom: SPACING.xs,
   },
+  doctorContact: {
+    fontSize: FONT_SIZES.small,
+    color: "#64748B",
+    marginBottom: SPACING.xs,
+  },
   ratingContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -1055,10 +1533,6 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.small,
     color: "#64748B",
     marginRight: SPACING.sm,
-  },
-  experienceText: {
-    fontSize: FONT_SIZES.small,
-    color: "#64748B",
   },
   doctorAddress: {
     fontSize: FONT_SIZES.small,
@@ -1086,22 +1560,25 @@ const styles = StyleSheet.create({
     fontSize: FONT_SIZES.small,
     color: "#64748B",
   },
-  doctorMeta: {
-    alignItems: "flex-end",
-    justifyContent: "center",
-    marginLeft: SPACING.sm,
-  },
-  priceTag: {
+  doctorInfoBox: {
+    backgroundColor: "#F0F9FF",
+    padding: SPACING.md,
+    borderRadius: moderateScale(12),
+    marginBottom: SPACING.lg,
+    flexDirection: "row",
     alignItems: "center",
   },
-  priceText: {
-    fontSize: FONT_SIZES.large,
-    fontWeight: "700",
-    color: "#059669",
-  },
-  priceSubtext: {
-    fontSize: FONT_SIZES.tiny,
+  infoBoxLabel: {
+    fontSize: FONT_SIZES.medium,
     color: "#64748B",
+    fontWeight: "600",
+    marginRight: SPACING.sm,
+  },
+  infoBoxValue: {
+    fontSize: FONT_SIZES.medium,
+    color: "#0EA5E9",
+    fontWeight: "600",
+    flex: 1,
   },
   calendar: {
     borderRadius: moderateScale(16),
@@ -1111,22 +1588,6 @@ const styles = StyleSheet.create({
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.1,
     shadowRadius: 8,
-  },
-  clinicInfo: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F0F9FF",
-    padding: SPACING.md,
-    borderRadius: moderateScale(12),
-    marginBottom: SPACING.lg,
-  },
-  clinicAddress: {
-    flex: 1,
-    fontSize: FONT_SIZES.medium,
-    color: "#0EA5E9",
-    fontWeight: "500",
-    marginLeft: SPACING.sm,
-    lineHeight: FONT_SIZES.medium * 1.4,
   },
   timeSlotsContainer: {
     flex: 1,
@@ -1178,6 +1639,24 @@ const styles = StyleSheet.create({
     fontWeight: "600",
     color: "#0F172A",
   },
+  clinicSummary: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: SPACING.md,
+    paddingBottom: SPACING.md,
+    borderBottomWidth: 1,
+    borderBottomColor: "#E2E8F0",
+  },
+  clinicSummaryInfo: {
+    flex: 1,
+    marginLeft: SPACING.md,
+  },
+  summaryClinicName: {
+    fontSize: FONT_SIZES.large,
+    fontWeight: "600",
+    color: "#0F172A",
+    marginTop: SPACING.xs,
+  },
   doctorSummary: {
     flexDirection: "row",
     alignItems: "center",
@@ -1211,16 +1690,7 @@ const styles = StyleSheet.create({
   summarySpecialty: {
     fontSize: FONT_SIZES.medium,
     color: "#64748B",
-    marginBottom: SPACING.xs,
-  },
-  summaryRating: {
-    flexDirection: "row",
-    alignItems: "center",
-  },
-  summaryRatingText: {
-    fontSize: FONT_SIZES.small,
-    color: "#64748B",
-    marginLeft: SPACING.xs,
+    marginTop: SPACING.xs,
   },
   summaryDetails: {
     gap: SPACING.sm,
@@ -1477,7 +1947,6 @@ const styles = StyleSheet.create({
   paymentScrollContent: {
     paddingBottom: SPACING.xl,
   },
-
 });
 
 export default DoctorAppointmentModal;

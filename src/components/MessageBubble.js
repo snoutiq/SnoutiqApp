@@ -1,25 +1,25 @@
-import React, { useState, useEffect, useRef, memo ,useContext,useCallback} from "react";
+import { Ionicons } from "@expo/vector-icons";
+import axios from "axios";
+import { BlurView } from "expo-blur";
+import { LinearGradient } from "expo-linear-gradient";
+import { memo, useCallback, useContext, useEffect, useRef, useState } from "react";
 import {
-  View,
+  ActivityIndicator,
+  Alert,
+  Animated,
+  Dimensions,
+  Modal,
+  ScrollView,
+  StyleSheet,
   Text,
   TouchableOpacity,
-  StyleSheet,
-  Animated,
-  Alert,
-  ActivityIndicator,
-  Modal,
-  Dimensions,
-  Platform,ScrollView,
+  View
 } from "react-native";
-import { Ionicons } from "@expo/vector-icons";
-import { moderateScale, verticalScale, scale } from "react-native-size-matters";
-import { LinearGradient } from "expo-linear-gradient";
-import { BlurView } from "expo-blur";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
+import { AuthContext } from "../context/AuthContext";
 import { socket } from "../context/Socket";
 import DoctorAppointmentModal from "./DoctorAppointmentModal";
-import { AuthContext } from "../context/AuthContext";
 import LiveDoctorSelectionModal from "./LiveDoctorSelectionModal";
-import axios from "axios";
 
 
 const { width } = Dimensions.get("window");
@@ -186,7 +186,7 @@ const DoctorSearchModal = memo(({ visible, onClose, onFailure, searchTime = 3000
             ]}
           >
             <LinearGradient
-              colors={["#7C3AED", "#EC4899"]}
+              colors={["#667eea", "#764ba2"]}
               style={styles.searchIcon}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -222,7 +222,7 @@ const DoctorSearchModal = memo(({ visible, onClose, onFailure, searchTime = 3000
               style={[styles.progressBar, { width: progressWidth }]}
             >
               <LinearGradient
-                colors={["#7C3AED", "#EC4899"]}
+                colors={["#667eea", "#764ba2"]}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={styles.progressGradient}
@@ -320,102 +320,109 @@ const DoctorSearchModal = memo(({ visible, onClose, onFailure, searchTime = 3000
 });
 
 // Enhanced StartCallButton with better error handling and UX
-const StartCallButton = memo(({ navigation, onShowLiveDoctors }) => {
+const StartCallButton = memo(({ navigation }) => {
   const [loading, setLoading] = useState(false);
   const [showSearchModal, setShowSearchModal] = useState(false);
   const [callStatus, setCallStatus] = useState(null);
+  const [nearbyDoctors, setNearbyDoctors] = useState([]);
+  const [showLiveDoctorsModal, setShowLiveDoctorsModal] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState("idle"); // 'idle', 'connecting', 'connected', 'failed'
+  
   const { user, token, updateNearbyDoctors, liveDoctors } = useContext(AuthContext);
   const patientId = user?.id || "101";
   const scaleAnim = useRef(new Animated.Value(1)).current;
-  const glowAnim = useRef(new Animated.Value(0)).current;
   const timeoutRef = useRef(null);
-  const { updateUser } = useContext(AuthContext);
-  const [nearbyDoctors, setNearbyDoctors] = useState([]);
-  const [showLiveDoctorsModal, setShowLiveDoctorsModal] = useState(false);
-  const [connectionStatus, setConnectionStatus] = useState('idle'); // 'idle', 'connecting', 'connected', 'failed'
 
-  // Enhanced doctor fetching with error handling
-  const fetchNearbyDoctors = useCallback(async () => {
-    if (!token || !user?.id) {
-      console.warn("No token or user ID available");
-      return;
+  // 🔹 Ye helper function sab kuch reset karega
+  const resetCallState = useCallback(() => {
+    setLoading(false);
+    setShowSearchModal(false);
+    setConnectionStatus("idle");
+    setCallStatus(null);
+    if (timeoutRef.current) {
+      clearTimeout(timeoutRef.current);
+      timeoutRef.current = null;
     }
+  }, []);
+
+  // ✅ No Response
+  const handleNoResponse = useCallback(() => {
+    resetCallState();
+    setConnectionStatus("failed");
+    Alert.alert(
+      "No Immediate Response",
+      "All veterinarians are currently busy. You can try again or book a clinic appointment for guaranteed care.",
+      [
+        {
+          text: "Try Again",
+          onPress: () => {
+            setCallStatus(null);
+            setConnectionStatus("idle");
+          },
+        },
+        {
+          text: "Book Appointment",
+          onPress: () => navigation.navigate("BookClinicVisit"),
+        },
+        {
+          text: "See Available Doctors",
+          onPress: () => setShowLiveDoctorsModal(true),
+        },
+      ],
+      { cancelable: true }
+    );
+  }, [navigation, resetCallState]);
+
+  // ✅ Fetch Nearby Doctors
+  const fetchNearbyDoctors = useCallback(async () => {
+    if (!token || !user?.id) return;
 
     try {
-      setConnectionStatus('connecting');
+      setConnectionStatus("connecting");
       const response = await axios.get(
         `https://snoutiq.com/backend/api/nearby-vets?user_id=${user.id}`,
-        { 
-          headers: { Authorization: `Bearer ${token}` },
-          // timeout: 100 // 10 second timeout
-        }
+        { headers: { Authorization: `Bearer ${token}` } }
       );
 
       if (response.data && Array.isArray(response.data.data)) {
         updateNearbyDoctors(response.data.data);
         setNearbyDoctors(response.data.data);
-        setConnectionStatus(response.data.data.length > 0 ? 'connected' : 'no_doctors');
+        setConnectionStatus(response.data.data.length > 0 ? "connected" : "no_doctors");
       } else {
-        setConnectionStatus('no_doctors');
+        setConnectionStatus("no_doctors");
       }
     } catch (error) {
       console.error("Failed to fetch nearby doctors:", error);
-      setConnectionStatus('failed');
-      
-      // Show user-friendly error
-      if (error.code === 'NETWORK_ERROR') {
-        Alert.alert(
-          "Connection Error",
-          "Unable to connect to the server. Please check your internet connection.",
-          [{ text: "OK" }]
-        );
-      }
+      setConnectionStatus("failed");
     }
   }, [token, user?.id, updateNearbyDoctors]);
 
   useEffect(() => {
-    if (!token || !user?.id) return;
-
-    const fetchData = async () => {
-      await fetchNearbyDoctors();
-    };
-
-    fetchData();
-    const interval = setInterval(fetchData, 2 * 60 * 1000); // Reduced to 2 minutes for better UX
-
+    fetchNearbyDoctors();
+    const interval = setInterval(fetchNearbyDoctors, 2 * 60 * 1000);
     return () => clearInterval(interval);
-  }, [token, user?.id, fetchNearbyDoctors]);
+  }, [fetchNearbyDoctors]);
 
-  // Enhanced socket listeners with better error handling
+  // ✅ Socket Events
   useEffect(() => {
-    if (!socket.connected) {
-      socket.connect();
-    }
-
+    if (!socket.connected) socket.connect();
     socket.emit("get-active-doctors");
 
     const handleCallSent = (data) => {
       setCallStatus({ type: "sent", ...data });
-      setConnectionStatus('connecting');
+      setConnectionStatus("connecting");
     };
 
     const handleCallAccepted = (data) => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+      resetCallState();
+      setConnectionStatus("connected");
 
-      setCallStatus({ type: "accepted", ...data });
-      setLoading(false);
-      setShowSearchModal(false);
-      setConnectionStatus('connected');
-
-      const doctor = (nearbyDoctors || []).find((d) => d.id == data.doctorId) ||
+      const doctor =
+        (nearbyDoctors || []).find((d) => d.id == data.doctorId) ||
         (liveDoctors || []).find((d) => d.id == data.doctorId);
 
       const patientIdLocal = user?.id || "101";
 
-      // Small delay for smooth UI transition
       setTimeout(() => {
         if (data.requiresPayment) {
           navigation.navigate("PaymentScreen", {
@@ -434,7 +441,6 @@ const StartCallButton = memo(({ navigation, onShowLiveDoctors }) => {
                 role: "audience",
                 uid: patientIdLocal,
               });
-              setCallStatus(null);
             },
           });
         } else {
@@ -446,173 +452,94 @@ const StartCallButton = memo(({ navigation, onShowLiveDoctors }) => {
             role: "audience",
             uid: patientIdLocal,
           });
-          setCallStatus(null);
         }
       }, 600);
     };
 
-    const handleCallRejected = (data) => {
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
-
-      setCallStatus({ type: "rejected", ...data });
-      setLoading(false);
-      setShowSearchModal(false);
-      setConnectionStatus('failed');
-
+    const handleCallRejected = () => {
+      resetCallState();
+      setConnectionStatus("failed");
       Alert.alert(
-        "Call Not Available",
+        "Call Rejected",
         "The veterinarian is currently unavailable. Would you like to try another doctor or schedule a clinic visit?",
         [
-          { 
-            text: "Try Another", 
-            onPress: () => {
-              setCallStatus(null);
-              setShowLiveDoctorsModal(true);
-            } 
-          },
-          { 
-            text: "Book Clinic", 
-            style: "default",
-            onPress: () => navigation.navigate("BookClinicVisit") 
-          },
-          { 
-            text: "Cancel", 
-            style: "cancel" 
-          },
+          { text: "Try Another", onPress: () => setShowLiveDoctorsModal(true) },
+          { text: "Book Clinic", onPress: () => navigation.navigate("BookClinicVisit") },
+          { text: "Cancel", style: "cancel" },
         ],
         { cancelable: true }
       );
     };
 
-    const handleSocketError = (error) => {
-      console.error("Socket error:", error);
-      setConnectionStatus('failed');
-    };
-
     socket.on("call-sent", handleCallSent);
     socket.on("call-accepted", handleCallAccepted);
     socket.on("call-rejected", handleCallRejected);
-    socket.on("error", handleSocketError);
-    socket.on("connect_error", handleSocketError);
 
     return () => {
       socket.off("call-sent", handleCallSent);
       socket.off("call-accepted", handleCallAccepted);
       socket.off("call-rejected", handleCallRejected);
-      socket.off("error", handleSocketError);
-      socket.off("connect_error", handleSocketError);
-      
-      if (timeoutRef.current) {
-        clearTimeout(timeoutRef.current);
-        timeoutRef.current = null;
-      }
+      resetCallState();
     };
-  }, [nearbyDoctors, liveDoctors, navigation, user]);
+  }, [nearbyDoctors, liveDoctors, navigation, user, resetCallState]);
 
-  const handleNoResponse = useCallback(() => {
-    setLoading(false);
-    setShowSearchModal(false);
-    setConnectionStatus('failed');
+  // ✅ Call Doctor
+  const handleCallDoctor = useCallback(
+    (doctor) => {
+      const callId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
+      const channel = `channel_${callId}`;
+      const patientIdLocal = user?.id || "101";
 
-    Alert.alert(
-      "No Immediate Response",
-      "All veterinarians are currently busy. You can try again or book a clinic appointment for guaranteed care.",
-      [
-        {
-          text: "Try Again",
-          style: "default",
-          onPress: () => {
-            setCallStatus(null);
-            setConnectionStatus('idle');
-          },
-        },
-        {
-          text: "Book Appointment",
-          style: "default",
-          onPress: () => navigation.navigate("BookClinicVisit"),
-        },
-        {
-          text: "See Available Doctors",
-          onPress: () => setShowLiveDoctorsModal(true),
-        },
-      ],
-      { cancelable: true }
-    );
-  }, [navigation]);
+      socket.emit("call-requested", {
+        doctorId: doctor.id,
+        patientId: patientIdLocal,
+        channel,
+        callId,
+        timestamp: new Date().toISOString(),
+      });
 
-  const handleCallDoctor = useCallback((doctor) => {
-    const callId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
-    const channel = `channel_${callId}`;
-    const patientIdLocal = user?.id || "101";
+      setShowLiveDoctorsModal(false);
+      setShowSearchModal(true);
+      setLoading(true);
+      setConnectionStatus("connecting");
 
-    socket.emit("call-requested", {
-      doctorId: doctor.id,
-      patientId: patientIdLocal,
-      channel,
-      callId,
-      timestamp: new Date().toISOString(),
-    });
+      if (timeoutRef.current) clearTimeout(timeoutRef.current);
+      timeoutRef.current = setTimeout(() => {
+        if (loading && !callStatus) {
+          handleNoResponse();
+        }
+      }, 30000);
+    },
+    [user?.id, loading, callStatus, handleNoResponse]
+  );
 
-    setShowLiveDoctorsModal(false);
-    setShowSearchModal(true);
-    setLoading(true);
-    setConnectionStatus('connecting');
-
-    if (timeoutRef.current) clearTimeout(timeoutRef.current);
-    timeoutRef.current = setTimeout(() => {
-      if (loading && !callStatus) {
-        handleNoResponse();
-      }
-    }, 30000);
-  }, [user?.id, loading, callStatus, handleNoResponse]);
-
+  // ✅ Start Call
   const startCall = useCallback(() => {
-    const doctorsToCall = nearbyDoctors && nearbyDoctors.length ? nearbyDoctors : [];
-
+    const doctorsToCall = nearbyDoctors.length ? nearbyDoctors : [];
     if (!doctorsToCall.length) {
       Alert.alert(
         "No Doctors Available",
-        "There are no nearby veterinarians available at the moment. Please try again later or book a clinic appointment.",
+        "There are no nearby veterinarians available. Try again later or book a clinic visit.",
         [
-          { 
-            text: "Book Appointment", 
-            onPress: () => navigation.navigate("BookClinicVisit") 
-          },
-          { 
-            text: "OK", 
-            style: "cancel" 
-          },
+          { text: "Book Appointment", onPress: () => navigation.navigate("BookClinicVisit") },
+          { text: "OK", style: "cancel" },
         ]
       );
       return;
     }
 
-    // Enhanced button animation
     Animated.sequence([
-      Animated.timing(scaleAnim, {
-        toValue: 0.95,
-        duration: 100,
-        useNativeDriver: true,
-      }),
-      Animated.spring(scaleAnim, {
-        toValue: 1,
-        tension: 300,
-        friction: 10,
-        useNativeDriver: true,
-      }),
+      Animated.timing(scaleAnim, { toValue: 0.95, duration: 100, useNativeDriver: true }),
+      Animated.spring(scaleAnim, { toValue: 1, tension: 300, friction: 10, useNativeDriver: true }),
     ]).start();
 
     setLoading(true);
     setShowSearchModal(true);
-    setConnectionStatus('connecting');
+    setConnectionStatus("connecting");
 
     const callId = `call_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`;
     const channel = `channel_${callId}`;
 
-    // Enhanced error handling for socket emissions
     try {
       doctorsToCall.forEach((doc) => {
         socket.emit("call-requested", {
@@ -635,43 +562,16 @@ const StartCallButton = memo(({ navigation, onShowLiveDoctors }) => {
         handleNoResponse();
       }
     }, 30000);
-  }, [nearbyDoctors, patientId, loading, callStatus, handleNoResponse, scaleAnim, navigation]);
+  }, [nearbyDoctors, patientId, loading, callStatus, handleNoResponse]);
 
-  const getButtonState = () => {
-    if (loading) return 'loading';
-    if (connectionStatus === 'no_doctors' || connectionStatus === 'failed') return 'unavailable';
-    if (!nearbyDoctors?.length && !liveDoctors?.length) return 'unavailable';
-    return 'available';
-  };
+  const buttonState =
+    loading
+      ? "loading"
+      : connectionStatus === "no_doctors" || connectionStatus === "failed"
+      ? "unavailable"
+      : "available";
 
-  const buttonState = getButtonState();
-  const buttonDisabled = buttonState === 'unavailable' || buttonState === 'loading';
-
-  const getButtonText = () => {
-    switch (buttonState) {
-      case 'loading':
-        return 'Searching for Doctors...';
-      case 'unavailable':
-        return 'No Doctors Available';
-      default:
-        return 'Start Video Consultation';
-    }
-  };
-
-  const getButtonIcon = () => {
-    switch (buttonState) {
-      case 'loading':
-        return <ActivityIndicator size="small" color="#fff" />;
-      case 'unavailable':
-        return <Ionicons name="videocam-off" size={scale(20)} color="#fff" />;
-      default:
-        return (
-          <View style={styles.iconContainer}>
-            <Ionicons name="videocam" size={scale(19)} color="#fff" />
-          </View>
-        );
-    }
-  };
+  const buttonDisabled = buttonState === "unavailable" || buttonState === "loading";
 
   return (
     <>
@@ -681,73 +581,41 @@ const StartCallButton = memo(({ navigation, onShowLiveDoctors }) => {
             style={[
               styles.callButton,
               buttonDisabled && styles.callButtonDisabled,
-              buttonState === 'loading' && styles.callButtonLoading,
             ]}
             activeOpacity={0.85}
             onPress={() => {
-              if (liveDoctors && liveDoctors.length) {
-                setShowLiveDoctorsModal(true);
-              } else {
-                startCall();
-              }
+              if (liveDoctors?.length) setShowLiveDoctorsModal(true);
+              else startCall();
             }}
             disabled={buttonDisabled}
           >
-            {!buttonDisabled && buttonState !== 'loading' && (
-              <Animated.View
-                style={[styles.glowEffect]}
-              />
-            )}
-
             <LinearGradient
               colors={
-                buttonState === 'loading' ? ["#9CA3AF", "#6B7280"] :
-                buttonState === 'unavailable' ? ["#9CA3AF", "#6B7280"] : 
-                ["#7C3AED", "#EC4899"]
+                buttonState === "loading"
+                  ? ["#9CA3AF", "#6B7280"]
+                  : buttonState === "unavailable"
+                  ? ["#9CA3AF", "#6B7280"]
+                  : ["#7C3AED", "#EC4899"]
               }
               style={styles.callButtonGradient}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
             >
               <View style={styles.buttonContent}>
-                {getButtonIcon()}
-                <Text style={styles.callButtonText}>
-                  {getButtonText()}
-                </Text>
-                {buttonState === 'available' && (
-                  <Ionicons name="arrow-forward" size={scale(16)} color="#fff" />
+                {buttonState === "loading" ? (
+                  <ActivityIndicator size="small" color="#fff" />
+                ) : (
+                  <Ionicons name="videocam" size={scale(20)} color="#fff" />
                 )}
+                <Text style={styles.callButtonText}>
+                  {buttonState === "loading"
+                    ? "Searching for Doctors..."
+                    : buttonState === "unavailable"
+                    ? "No Doctors Available"
+                    : "Start Video Consultation"}
+                </Text>
               </View>
             </LinearGradient>
           </TouchableOpacity>
         </Animated.View>
-
-        {buttonState === 'available' && (
-          <View style={styles.infoRow}>
-            <Ionicons name="shield-checkmark" size={scale(13)} color="#10B981" />
-            <Text style={styles.infoText}>
-              Licensed veterinarians • Instant connection • Secure call
-            </Text>
-          </View>
-        )}
-
-        {buttonState === 'unavailable' && connectionStatus !== 'failed' && (
-          <View style={styles.infoRow}>
-            <Ionicons name="information-circle" size={scale(13)} color="#F59E0B" />
-            <Text style={[styles.infoText, styles.warningText]}>
-              Check back soon or book a clinic appointment
-            </Text>
-          </View>
-        )}
-
-        {connectionStatus === 'failed' && (
-          <View style={styles.infoRow}>
-            <Ionicons name="warning" size={scale(13)} color="#EF4444" />
-            <Text style={[styles.infoText, styles.errorText]}>
-              Connection issue • Tap to retry
-            </Text>
-          </View>
-        )}
       </View>
 
       <LiveDoctorSelectionModal
@@ -760,21 +628,12 @@ const StartCallButton = memo(({ navigation, onShowLiveDoctors }) => {
 
       <DoctorSearchModal
         visible={showSearchModal}
-        onClose={() => {
-          setShowSearchModal(false);
-          setLoading(false);
-          setConnectionStatus('idle');
-          if (timeoutRef.current) {
-            clearTimeout(timeoutRef.current);
-            timeoutRef.current = null;
-          }
-        }}
+        onClose={resetCallState}
         onFailure={handleNoResponse}
       />
     </>
   );
 });
-
 // ------------------- EmergencyStatusBox -------------------
 const EmergencyStatusBox = memo(
   ({ decision, nearbyDoctors, navigation, messageId, isTypingComplete }) => {
@@ -919,7 +778,7 @@ const EmergencyStatusBox = memo(
               <View style={styles.actionHeader}>
                 <View style={styles.actionIconWrapper}>
                   <LinearGradient
-                    colors={["#7C3AED", "#EC4899"]}
+                    colors={["#667eea", "#764ba2"]}
                     style={styles.actionIcon}
                   >
                     <Ionicons name="videocam" size={scale(24)} color="#FFFFFF" />
@@ -998,7 +857,7 @@ const EmergencyStatusBox = memo(
                 <View style={styles.actionHeader}>
                   <View style={styles.actionIconWrapper}>
                     <LinearGradient
-                      colors={["#7C3AED", "#EC4899"]}
+                      colors={["#667eea", "#764ba2"]}
                       style={styles.actionIcon}
                     >
                       <Ionicons name="medical" size={scale(24)} color="#FFFFFF" />
@@ -1116,7 +975,7 @@ const MessageBubble = memo(
           ]}
         >
           <LinearGradient
-            colors={["#7C3AED", "#EC4899"]}
+            colors={["#667eea", "#764ba2"]}
             style={styles.aiAvatar}
           >
             <Ionicons name="sparkles" size={scale(16)} color="#FFFFFF" />
@@ -1149,7 +1008,7 @@ const MessageBubble = memo(
         >
           {!isUser && (
             <LinearGradient
-              colors={["#7C3AED", "#EC4899"]}
+              colors={["#667eea", "#764ba2"]}
               style={styles.aiAvatar}
             >
               <Ionicons name="medical" size={scale(16)} color="#FFFFFF" />
@@ -1203,7 +1062,7 @@ const MessageBubble = memo(
   }
 );
 
-export { MessageBubble, StartCallButton, EmergencyStatusBox };
+export { EmergencyStatusBox, MessageBubble, StartCallButton };
 
 // ------------------- Styles -------------------
 const styles = StyleSheet.create({

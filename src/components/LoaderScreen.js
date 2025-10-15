@@ -1,6 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { View, Animated, Easing, StyleSheet } from "react-native";
-import Icon from "react-native-vector-icons/FontAwesome";
+import FontAwesome from "@expo/vector-icons";
 
 export default function LoaderScreen() {
   const spinValue = useRef(new Animated.Value(0)).current;
@@ -24,7 +24,7 @@ export default function LoaderScreen() {
   return (
     <View style={styles.container}>
       <Animated.View style={{ transform: [{ rotate: spin }] }}>
-        <Icon name="paw" size={64} color="#3b82f6" />
+        <FontAwesome name="paw" size={64} color="#3b82f6" />
       </Animated.View>
     </View>
   );
@@ -33,7 +33,7 @@ export default function LoaderScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#ffffff",
+    backgroundColor: "#F0F4FF",
     justifyContent: "center",
     alignItems: "center",
   },

@@ -1,335 +1,130 @@
-
-
-import axios from 'axios';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useEffect, useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Image,
-  KeyboardAvoidingView,
-  Modal,
-  Platform,
-  SafeAreaView,
-  ScrollView,
-  StyleSheet,
+  View,
   Text,
   TextInput,
   TouchableOpacity,
-  View,
+  ScrollView,
+  Alert,
+  Image,
+  Modal,
+  ActivityIndicator,
+  StyleSheet,
+  SafeAreaView,
+  Platform,
+  Animated,
+  FlatList,
 } from 'react-native';
-import { moderateScale, scale, verticalScale } from 'react-native-size-matters';
-import { useAuth } from '../context/AuthContext'; // Import useAuth hook
+import { LinearGradient } from 'expo-linear-gradient';
+import { Ionicons } from '@expo/vector-icons';
+import axios from 'axios';
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import DESIGN from './DesignSystem'; // Import design system
 
-const petTypeOptions = [
-  { label: "Dog", value: "dog" },
-  { label: "Cat", value: "cat" },
-];
-
-const petGenderOptions = [
-  { label: "Male", value: "male" },
-  { label: "Female", value: "female" },
-];
-
-const catBreedOptions = [
-  { label: "Indian Street Cat", value: "indian_street_cat" },
-  { label: "Persian", value: "persian" },
-];
-
-// Custom Dropdown Component
-const CustomDropdown = ({ title, value, onSelect, options, error, placeholder, loading = false }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const selectedOption = options.find(option => option.value === value);
-
-  return (
-    <View style={styles.inputContainer}>
-      <Text style={styles.label}>{title}</Text>
-      <TouchableOpacity
-        style={[
-          styles.input,
-          styles.dropdownContainer,
-          error && styles.inputError,
-        ]}
-        onPress={() => setIsVisible(true)}
-        disabled={loading || options.length === 0}
-        activeOpacity={0.7}
-      >
-        <View style={styles.dropdownContent}>
-          {loading && (
-            <ActivityIndicator size="small" color="#7C3AED" style={styles.loadingIcon} />
-          )}
-          <Text style={[
-            styles.dropdownText,
-            !selectedOption && styles.placeholderText
-          ]}>
-            {loading 
-              ? "Loading..." 
-              : selectedOption 
-                ? selectedOption.label 
-                : placeholder || `Select ${title.toLowerCase()}`
-            }
-          </Text>
-          <Text style={[styles.dropdownArrow, isVisible && styles.dropdownArrowOpen]}>▼</Text>
-        </View>
-      </TouchableOpacity>
-      {error && <Text style={styles.errorText}>{error}</Text>}
-
-      <Modal
-        visible={isVisible}
-        transparent={true}
-        animationType="fade"
-        onRequestClose={() => setIsVisible(false)}
-      >
-        <TouchableOpacity
-          style={styles.modalOverlay}
-          activeOpacity={1}
-          onPress={() => setIsVisible(false)}
-        >
-          <View style={styles.dropdownModalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select {title}</Text>
-              <TouchableOpacity
-                style={styles.closeButton}
-                onPress={() => setIsVisible(false)}
-                activeOpacity={0.7}
-              >
-                <Text style={styles.closeButtonText}>✕</Text>
-              </TouchableOpacity>
-            </View>
-            
-            <ScrollView style={styles.optionsList} showsVerticalScrollIndicator={false}>
-              {options.map((item, index) => (
-                <TouchableOpacity
-                  key={item.value}
-                  style={[
-                    styles.optionItem,
-                    item.value === value && styles.selectedOptionItem,
-                    index === options.length - 1 && styles.lastOptionItem
-                  ]}
-                  onPress={() => {
-                    onSelect(item.value);
-                    setIsVisible(false);
-                  }}
-                  activeOpacity={0.7}
-                >
-                  <Text style={[
-                    styles.optionText,
-                    item.value === value && styles.selectedOptionText
-                  ]}>
-                    {item.label}
-                  </Text>
-                  {item.value === value && (
-                    <Text style={styles.checkMark}>✓</Text>
-                  )}
-                </TouchableOpacity>
-              ))}
-            </ScrollView>
-          </View>
-        </TouchableOpacity>
-      </Modal>
-    </View>
-  );
+const API_BASE_URL = 'https://snoutiq.com/backend/api';
+const CACHE_KEYS = {
+  DOG_BREEDS: 'dog_breeds_cache',
+  PETS_DATA: 'pets_data_cache',
 };
 
 const EditPetProfile = ({ navigation, route }) => {
-  const { petIndex = null, petId = null } = route.params || {};
+  const { user, token } = route.params || {};
   
-  // Use AuthContext to get user ID
-  const { user, token } = useAuth();
-
   const [formData, setFormData] = useState({
-    name: "",
-    petType: "",
-    petGender: "",
-    breed: "",
-    age: "",
-    weight: "",
-    avatar: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=150&h=150&fit=crop"
+    name: '',
+    petType: '',
+    petGender: '',
+    breed: '',
+    age: '',
+    weight: '',
+    avatar: 'https://images.unsplash.com/photo-1552053831-71594a27632d?w=150&h=150&fit=crop',
   });
-
-  const [addPetFormData, setAddPetFormData] = useState({
-    name: "",
-    petType: "",
-    petGender: "",
-    breed: "",
-    age: "",
-    weight: "",
-    avatar: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=150&h=150&fit=crop"
-  });
-
-  const [isLoading, setIsLoading] = useState(false);
+  
+  const [errors, setErrors] = useState({});
   const [isSaving, setIsSaving] = useState(false);
-  const [activeMode, setActiveMode] = useState('edit');
-  const [petsList, setPetsList] = useState([]);
   const [dogBreeds, setDogBreeds] = useState([]);
   const [loadingBreeds, setLoadingBreeds] = useState(false);
-  const [errors, setErrors] = useState({});
-  const [touched, setTouched] = useState({});
+  const [showBreedModal, setShowBreedModal] = useState(false);
+  const [filteredBreeds, setFilteredBreeds] = useState([]);
+  const [breedSearch, setBreedSearch] = useState('');
 
-  // API base URL
-  const API_BASE_URL = 'https://snoutiq.com/backend/api';
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(30)).current;
 
-  // Get user ID from AuthContext
-  const userId = user?.id || user?.user_id;
-
-  useEffect(() => {
-    if (userId) {
-      fetchDogBreeds();
-      if (petId) {
-        // If we have a specific pet ID, fetch that pet's data
-        fetchIndividualPetData();
-      } else {
-        // Otherwise fetch all pets
-        fetchPetsFromAPI();
-      }
-    }
-  }, [userId, petId]);
-
-  useEffect(() => {
-    if (petIndex === -1 || petId === -1) {
-      setActiveMode('add');
-    } else {
-      setActiveMode('edit');
-    }
-  }, [petIndex, petId]);
+  const catBreedOptions = [
+    { label: 'American Shorthair', value: 'american_shorthair' },
+    { label: 'Domestic Shorthair', value: 'domestic_shorthair' },
+    { label: 'Siamese', value: 'siamese' },
+    { label: 'Persian', value: 'persian' },
+    { label: 'Maine Coon', value: 'maine_coon' },
+    { label: 'Bengal', value: 'bengal' },
+    { label: 'Ragdoll', value: 'ragdoll' },
+    { label: 'Sphynx', value: 'sphynx' },
+    { label: 'British Shorthair', value: 'british_shorthair' },
+    { label: 'Mixed Breed', value: 'mixed_breed' },
+    { label: 'Other', value: 'other' },
+  ];
 
   useEffect(() => {
-    setErrors({});
-    setTouched({});
-    if (activeMode === 'add') {
-      setAddPetFormData({
-        name: "",
-        petType: "",
-        petGender: "",
-        breed: "",
-        age: "",
-        weight: "",
-        avatar: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=150&h=150&fit=crop"
-      });
-    }
-  }, [activeMode]);
+    Animated.parallel([
+      Animated.timing(fadeAnim, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 600,
+        useNativeDriver: true,
+      }),
+    ]).start();
 
-  // Fetch individual pet data by ID
-  const fetchIndividualPetData = async () => {
-    if (!petId) {
-      console.warn('No pet ID provided');
-      return;
-    }
+    fetchDogBreeds();
+  }, []);
 
+  const cacheData = async (key, data) => {
     try {
-      setIsLoading(true);      
-      const response = await axios.get(`${API_BASE_URL}/pets/${petId}`, {
-        timeout: 15000,
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      
-      if (response.data.status === "success" && response.data.data) {
-        const pet = response.data.data;
-        
-        // Determine pet type based on breed
-        const petType = getPetTypeFromBreed(pet.breed);
-        
-        setFormData({
-          name: pet.name || "",
-          petType: petType,
-          petGender: pet.pet_gender || "",
-          breed: pet.breed || "",
-          age: pet.pet_age ? String(pet.pet_age) : "",
-          weight: "", // Add weight field if available in API
-          avatar: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=150&h=150&fit=crop"
-        });
-        
-      } else {
-        throw new Error('Failed to fetch individual pet data');
+      await AsyncStorage.setItem(key, JSON.stringify({ data, timestamp: Date.now() }));
+    } catch (error) {
+      console.error('Cache save error:', error);
+    }
+  };
+
+  const getCachedData = async (key) => {
+    try {
+      const cached = await AsyncStorage.getItem(key);
+      if (cached) {
+        const { data, timestamp } = JSON.parse(cached);
+        if (Date.now() - timestamp < 24 * 60 * 60 * 1000) return data;
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to load pet data from server");
-    } finally {
-      setIsLoading(false);
+      console.error('Cache read error:', error);
     }
+    return null;
   };
 
-  // Fetch pets from API
-  const fetchPetsFromAPI = async () => {
-    if (!userId) {
-      Alert.alert("Error", "User not authenticated. Please login again.");
-      return;
-    }
-
-    try {
-      setIsLoading(true);      
-      const response = await axios.get(`${API_BASE_URL}/users/${userId}/pets`, {
-        timeout: 15000,
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      
-      if (response.data.status === "success") {
-        const pets = response.data.data || [];
-        setPetsList(pets);
-
-        // If we're editing a specific pet by index, load its data
-        if (petIndex !== null && petIndex >= 0 && pets[petIndex]) {
-          const selectedPet = pets[petIndex];
-          const petType = getPetTypeFromBreed(selectedPet.breed);
-          
-          setFormData({
-            name: selectedPet.name || "",
-            petType: petType,
-            petGender: selectedPet.pet_gender || "",
-            breed: selectedPet.breed || "",
-            age: selectedPet.pet_age ? String(selectedPet.pet_age) : "",
-            weight: "", // Add weight field if available in API
-            avatar: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=150&h=150&fit=crop"
-          });
-        }
-      } else {
-        throw new Error('Failed to fetch pets from API');
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to load pet data from server");
-    } finally {
-      setIsLoading(false);
-    }
-  };
-
-  // Helper function to determine pet type from breed
-  const getPetTypeFromBreed = (breed) => {
-    if (!breed) return "dog";
-    
-    const catBreeds = ['maine_coon', 'persian', 'siamese', 'bengal', 'ragdoll', 'sphynx', 'indian_street_cat'];
-    const breedLower = breed.toLowerCase();
-    
-    if (catBreeds.some(catBreed => breedLower.includes(catBreed.toLowerCase()))) {
-      return "cat";
-    }
-    
-    return "dog"; // default to dog
-  };
-
-  const fetchDogBreeds = async (retryCount = 3, delay = 1000) => {
+  const fetchDogBreeds = async () => {
     try {
       setLoadingBreeds(true);
-      const response = await axios.get("https://snoutiq.com/backend/api/dog-breeds/all", {
-        timeout: 10000,
-      });
+      const cachedBreeds = await getCachedData(CACHE_KEYS.DOG_BREEDS);
+      if (cachedBreeds) {
+        setDogBreeds(cachedBreeds);
+        setLoadingBreeds(false);
+        return;
+      }
+
+      const response = await axios.get(`${API_BASE_URL}/dog-breeds/all`, { timeout: 10000 });
       
-      if (response.data.status === "success" && response.data.breeds) {
+      if (response.data.status === 'success' && response.data.breeds) {
         const breeds = [];
-        
         Object.keys(response.data.breeds).forEach(breedKey => {
           const subBreeds = response.data.breeds[breedKey];
-          
           if (subBreeds.length === 0) {
             breeds.push({
               label: formatBreedName(breedKey),
               value: breedKey
             });
           } else {
-            breeds.push({
-              label: formatBreedName(breedKey),
-              value: breedKey
-            });
-            
             subBreeds.forEach(subBreed => {
               breeds.push({
                 label: formatBreedName(breedKey, subBreed),
@@ -340,722 +135,677 @@ const EditPetProfile = ({ navigation, route }) => {
         });
         
         breeds.sort((a, b) => a.label.localeCompare(b.label));
-        
         breeds.push(
-          { label: "Mixed Breed", value: "mixed_breed" },
-          { label: "Other", value: "other" }
+          { label: 'Mixed Breed', value: 'mixed_breed' },
+          { label: 'Other', value: 'other' }
         );
         
         setDogBreeds(breeds);
-      } else {
-        throw new Error('Invalid API response structure');
+        await cacheData(CACHE_KEYS.DOG_BREEDS, breeds);
       }
     } catch (error) {
-      console.error('❌ Error fetching dog breeds:', {
-        message: error.message,
-        status: error.response?.status,
-        data: error.response?.data,
-        retryCount,
-      });
-      
-      if (retryCount > 0) {
-        await new Promise(resolve => setTimeout(resolve, delay));
-        return fetchDogBreeds(retryCount - 1, delay * 2);
-      }
-      
+      console.error('Error fetching breeds:', error);
       setDogBreeds([
-        { label: "Mixed Breed", value: "mixed_breed" },
-        { label: "Other", value: "other" }
+        { label: 'Mixed Breed', value: 'mixed_breed' },
+        { label: 'Other', value: 'other' }
       ]);
-      Alert.alert(
-        "Error",
-        "Could not load dog breeds. Using default options.",
-        [{ text: "OK" }]
-      );
     } finally {
       setLoadingBreeds(false);
     }
   };
 
   const formatBreedName = (breedKey, subBreed = null) => {
-    let formattedName = breedKey
-      .split(/[-_\s]/)
-      .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-      .join(' ');
-    
+    let formattedName = breedKey.split(/[-_\s]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
     if (subBreed) {
-      const formattedSubBreed = subBreed
-        .split(/[-_\s]/)
-        .map(word => word.charAt(0).toUpperCase() + word.slice(1))
-        .join(' ');
+      const formattedSubBreed = subBreed.split(/[-_\s]/).map(w => w.charAt(0).toUpperCase() + w.slice(1)).join(' ');
       formattedName = `${formattedSubBreed} ${formattedName}`;
     }
-    
     return formattedName;
   };
 
-  const getPetBreedOptions = (petType) => {
-    if (petType === "dog") {
-      return dogBreeds;
-    } else if (petType === "cat") {
-      return catBreedOptions;
-    }
-    return [];
+  const getBreedOptions = () => {
+    return formData.petType === 'dog' ? dogBreeds : formData.petType === 'cat' ? catBreedOptions : [];
   };
 
-  const getBreedsPlaceholder = (petType, loadingBreeds, dogBreedsLength) => {
-    if (!petType) {
-      return "Please select pet type first";
-    } else if (petType === "dog" && loadingBreeds) {
-      return "Loading dog breeds...";
-    } else if (petType === "dog" && dogBreedsLength <= 2) {
-      return "Failed to load breeds, select default";
-    } else {
-      return `Select ${petType} breed`;
-    }
+  const handleBreedSearch = (text) => {
+    setBreedSearch(text);
+    const options = getBreedOptions();
+    const filtered = options.filter(breed => breed.label.toLowerCase().includes(text.toLowerCase()));
+    setFilteredBreeds(filtered);
   };
 
-  const validate = (data) => {
-    let valid = true;
-    let newErrors = {};
+  const openBreedModal = () => {
+    if (!formData.petType) {
+      Alert.alert('Select Pet Type', 'Please select whether it\'s a dog or cat first');
+      return;
+    }
+    const options = getBreedOptions();
+    setFilteredBreeds(options);
+    setBreedSearch('');
+    setShowBreedModal(true);
+  };
 
-    if (!data.name.trim()) {
-      newErrors.name = "Pet name is required";
-      valid = false;
+  const selectBreed = (breed) => {
+    setFormData(prev => ({ ...prev, breed: breed.value }));
+    setShowBreedModal(false);
+    setBreedSearch('');
+  };
+
+  const validate = () => {
+    const newErrors = {};
+
+    if (!formData.name.trim()) {
+      newErrors.name = 'Pet name is required';
+    } else if (formData.name.trim().length < 2) {
+      newErrors.name = 'Name must be at least 2 characters';
     }
-    if (!data.petType) {
-      newErrors.petType = "Pet type is required";
-      valid = false;
+
+    if (!formData.petType) newErrors.petType = 'Please select pet type';
+    if (!formData.petGender) newErrors.petGender = 'Please select gender';
+    if (!formData.breed) newErrors.breed = 'Please select breed';
+
+    if (!formData.age.trim()) {
+      newErrors.age = 'Age is required';
+    } else if (isNaN(formData.age) || parseFloat(formData.age) < 0 || parseFloat(formData.age) > 30) {
+      newErrors.age = 'Enter valid age (0-30)';
     }
-    if (!data.petGender) {
-      newErrors.petGender = "Pet gender is required";
-      valid = false;
-    }
-    if (!data.breed) {
-      newErrors.breed = "Breed is required";
-      valid = false;
-    }
-    if (!data.age.trim()) {
-      newErrors.age = "Age is required";
-      valid = false;
+
+    if (formData.weight.trim() && (isNaN(formData.weight) || parseFloat(formData.weight) <= 0)) {
+      newErrors.weight = 'Enter valid weight';
     }
 
     setErrors(newErrors);
-    return valid;
+    return Object.keys(newErrors).length === 0;
   };
 
-  const updateField = (field, value) => setFormData(prev => ({ ...prev, [field]: value }));
-  const updateAddPetField = (field, value) => setAddPetFormData(prev => ({ ...prev, [field]: value }));
-
-  // Get current pet ID for editing
-  const getCurrentPetId = () => {
-    if (petId) {
-      return petId;
-    } else if (petIndex !== null && petsList[petIndex]) {
-      return petsList[petIndex].id;
-    }
-    return null;
-  };
-
-  // Save pet to API
-  const handleSave = async () => {
-    if (!validate(formData)) {
-      Alert.alert("Validation Error", "Please fix the errors.");
+  const handleAddPet = async () => {
+    if (!validate()) {
+      Alert.alert('Validation Error', 'Please fix the errors before submitting.');
       return;
     }
 
-    if (!userId) {
-      Alert.alert("Error", "User ID not available. Please login again.");
-      return;
-    }
-
-    const currentPetId = getCurrentPetId();
-    if (!currentPetId) {
-      Alert.alert("Error", "Pet ID not found for editing");
+    if (!user) {
+      Alert.alert('Error', 'User ID not available. Please login again.');
       return;
     }
 
     try {
       setIsSaving(true);
       
-      // Prepare data for API
       const petData = {
-        name: formData.name,
+        name: formData.name.trim(),
         breed: formData.breed,
         pet_age: formData.age ? parseFloat(formData.age) : null,
         pet_gender: formData.petGender,
-        // Add other fields as needed by your API
+        weight: formData.weight ? parseFloat(formData.weight) : null,
       };
 
-      const response = await axios.put(`${API_BASE_URL}/pets/${currentPetId}`, petData, {
+      const response = await axios.post(`${API_BASE_URL}/users/${user}/pets`, petData, {
         timeout: 15000,
         headers: token ? { Authorization: `Bearer ${token}` } : {}
       });
       
-      if (response.data.status === "success") {
-        Alert.alert("Success", `${formData.name}'s profile has been updated!`);
-        // Refresh the pets list
-        await fetchPetsFromAPI();
-        navigation?.goBack();
-      } else {
-        throw new Error('Failed to update pet');
-      }
-    } catch (error) {
-      Alert.alert("Error", "Failed to save pet data to server");
-    } finally {
-      setIsSaving(false);
-    }
-  };
-
-  // Add new pet via API
-  const handleAddPet = async () => {
-    if (!validate(addPetFormData)) {
-      Alert.alert("Validation Error", "Please fix the errors.");
-      return;
-    }
-
-    if (!userId) {
-      Alert.alert("Error", "User ID not available. Please login again.");
-      return;
-    }
-
-    try {
-      setIsSaving(true);
-      
-      // Prepare data for API
-      const petData = {
-        name: addPetFormData.name,
-        breed: addPetFormData.breed,
-        pet_age: addPetFormData.age ? parseFloat(addPetFormData.age) : null,
-        pet_gender: addPetFormData.petGender,
-        // You might need to add pet_type if your API supports it
-      };
-
-      const response = await axios.post(`${API_BASE_URL}/users/${userId}/pets`, petData, {
-        timeout: 15000,
-        headers: token ? { Authorization: `Bearer ${token}` } : {}
-      });
-      
-      if (response.data.status === "success") {
-        Alert.alert("Success", `${addPetFormData.name} has been added!`);
-        
-        // Reset form and refresh pets list
-        setAddPetFormData({
-          name: "",
-          petType: "",
-          petGender: "",
-          breed: "",
-          age: "",
-          weight: "",
-          avatar: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=150&h=150&fit=crop"
-        });
-        
-        // Refresh the pets list
-        await fetchPetsFromAPI();
+      if (response.data.status === 'success') {
+        Alert.alert(
+          'Success! 🎉',
+          `${formData.name} has been added to your family!`,
+          [{ text: 'Great!', onPress: () => navigation.goBack() }]
+        );
       } else {
         throw new Error('Failed to add pet');
       }
     } catch (error) {
-      Alert.alert("Error", "Failed to add pet to server");
+      console.error('Error adding pet:', error);
+      Alert.alert('Error', error.response?.data?.message || 'Failed to add pet. Please try again.');
     } finally {
       setIsSaving(false);
     }
   };
 
-  // Delete pet via API
-  const handleDeletePet = async (index) => {
-    const pet = petsList[index];
-    
-    Alert.alert(
-      "Delete Pet",
-      `Are you sure you want to delete ${pet.name}?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              const response = await axios.delete(`${API_BASE_URL}/pets/${pet.id}`, {
-                timeout: 15000,
-                headers: token ? { Authorization: `Bearer ${token}` } : {}
-              });
-              
-              if (response.data.status === "success") {
-                Alert.alert("Success", "Pet deleted successfully!");
-                // Refresh the pets list
-                await fetchPetsFromAPI();
-              } else {
-                throw new Error('Failed to delete pet');
-              }
-            } catch (error) {
-              Alert.alert("Error", "Failed to delete pet from server");
-            }
-          }
-        }
-      ]
-    );
+  const updateField = (field, value) => {
+    setFormData(prev => ({ ...prev, [field]: value }));
+    if (errors[field]) {
+      setErrors(prev => ({ ...prev, [field]: '' }));
+    }
   };
 
-  const handleChangePhoto = () => {
-    Alert.alert(
-      "Change Pet Photo",
-      "Choose an option",
-      [
-        { text: "Camera", onPress: () => console.log("Open Camera") },
-        { text: "Gallery", onPress: () => console.log("Open Gallery") },
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
-  };
-
-  const renderPetsList = () => (
-  <View style={styles.petsListSection}>
-    <Text style={styles.sectionTitle}>Your Pets</Text>
-    {petsList.length ? petsList.map((pet, i) => (
-      <View key={pet.id} style={styles.petListItem}>
-        <Image source={{ uri: "https://images.unsplash.com/photo-1552053831-71594a27632d?w=150&h=150&fit=crop" }} style={styles.petListImage} />
-        <View style={styles.petListInfo}>
-          <Text style={styles.petListName}>{pet.name}</Text>
-          <Text style={styles.petListDetails}>{pet.breed} • {pet.pet_age} years</Text>
-        </View>
-        <TouchableOpacity 
-          style={styles.deletePetButton} 
-          onPress={() => handleDeletePet(i)}  // ← This calls the delete function
-        >
-          <Text style={styles.deletePetButtonText}>🗑️</Text>
-        </TouchableOpacity>
-      </View>
-    )) : <Text style={styles.noPetsText}>You don't have any pets yet.</Text>}
-  </View>
-);
-
-  const handleBottomSave = () => {
-    if (activeMode === 'edit') handleSave();
-    else if (activeMode === 'add') handleAddPet();
-  };
-
-  if (isLoading) {
-    return (
-      <SafeAreaView style={styles.container}>
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#7C3AED" />
-          <Text style={styles.loadingText}>Loading pet data...</Text>
-        </View>
-      </SafeAreaView>
-    );
-  }
-
-  const currentData = activeMode === 'edit' ? formData : addPetFormData;
-  const setCurrentData = activeMode === 'edit' ? setFormData : setAddPetFormData;
-  const updateCurrentField = activeMode === 'edit' ? updateField : updateAddPetField;
-  const currentBreedOptions = getPetBreedOptions(currentData.petType);
-  const currentBreedsPlaceholder = getBreedsPlaceholder(currentData.petType, loadingBreeds, dogBreeds.length);
-  const currentLoadingBreeds = currentData.petType === "dog" && loadingBreeds;
+  const renderBreedItem = ({ item }) => (
+    <TouchableOpacity
+      style={[styles.breedItem, formData.breed === item.value && styles.breedItemSelected]}
+      onPress={() => selectBreed(item)}
+      activeOpacity={0.7}
+    >
+      <Text style={[styles.breedText, formData.breed === item.value && styles.breedTextSelected]}>
+        {item.label}
+      </Text>
+      {formData.breed === item.value && (
+        <Ionicons name="checkmark-circle" size={DESIGN.ICON_SIZES.sm} color={DESIGN.COLORS.primary} />
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <LinearGradient 
-        colors={['#7C3AED', '#EC4899']} 
-        style={styles.header}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
-      >
-        <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation?.goBack()}>
-            <Text style={styles.backButton}>←</Text>
+      <LinearGradient colors={DESIGN.GRADIENTS.primary} style={styles.headerGradient}>
+        <View style={styles.header}>
+          <TouchableOpacity style={styles.backButton} onPress={() => navigation.goBack()}>
+            <Ionicons name="arrow-back" size={DESIGN.ICON_SIZES.md} color={DESIGN.COLORS.white} />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>
-            {activeMode === 'edit' ? 'Edit Pet' : activeMode === 'add' ? 'Add Pet' : 'Remove Pet'}
-          </Text>
+          <Text style={styles.headerTitle}>Add New Pet</Text>
           <View style={styles.placeholder} />
         </View>
       </LinearGradient>
-      <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        style={styles.flex}>
-        <ScrollView style={styles.content}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
-          {/* Mode Toggle */}
-          <View style={styles.modeToggleSection}>
-            <View style={styles.modeToggleButtons}>
-              {['edit', 'add', 'remove'].map(mode => (
+
+      <ScrollView 
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
+        <Animated.View 
+          style={[
+            styles.formContainer,
+            { opacity: fadeAnim, transform: [{ translateY: slideAnim }] }
+          ]}
+        >
+          {/* Avatar Section */}
+          <View style={styles.avatarSection}>
+            <View style={styles.avatarContainer}>
+              <Image source={{ uri: formData.avatar }} style={styles.avatar} />
+              <TouchableOpacity style={styles.cameraButton}>
+                <Ionicons name="camera" size={DESIGN.ICON_SIZES.sm} color={DESIGN.COLORS.white} />
+              </TouchableOpacity>
+            </View>
+            <Text style={styles.avatarText}>Add Photo (Optional)</Text>
+          </View>
+
+          {/* Pet Name */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Pet Name *</Text>
+            <TextInput
+              style={[styles.textInput, errors.name && styles.inputError]}
+              placeholder="Enter your pet's name"
+              placeholderTextColor={DESIGN.COLORS.gray400}
+              value={formData.name}
+              onChangeText={(text) => updateField('name', text)}
+            />
+            {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
+          </View>
+
+          {/* Pet Type */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Pet Type *</Text>
+            <View style={styles.typeContainer}>
+              {[
+                { value: 'dog', label: 'Dog', icon: 'paw' },
+                { value: 'cat', label: 'Cat', icon: 'paw' },
+              ].map((type) => (
                 <TouchableOpacity
-                  key={mode}
-                  style={[styles.modeButton, activeMode === mode && styles.activeModeButton]}
-                  onPress={() => setActiveMode(mode)}
+                  key={type.value}
+                  style={[
+                    styles.typeOption,
+                    formData.petType === type.value && styles.typeOptionSelected,
+                  ]}
+                  onPress={() => updateField('petType', type.value)}
                   activeOpacity={0.7}
                 >
-                  <Text style={[styles.modeButtonText, activeMode === mode && styles.activeModeButtonText]}>
-                    {mode.charAt(0).toUpperCase() + mode.slice(1)}
+                  <Ionicons 
+                    name={type.icon} 
+                    size={DESIGN.ICON_SIZES.md} 
+                    color={formData.petType === type.value ? DESIGN.COLORS.white : DESIGN.COLORS.primary} 
+                  />
+                  <Text style={[
+                    styles.typeText,
+                    formData.petType === type.value && styles.typeTextSelected,
+                  ]}>
+                    {type.label}
                   </Text>
                 </TouchableOpacity>
               ))}
             </View>
+            {errors.petType && <Text style={styles.errorText}>{errors.petType}</Text>}
           </View>
 
-          {/* Content based on mode */}
-          {(activeMode === 'edit' || activeMode === 'add') && (
-            <>
-              <View style={styles.avatarSection}>
-                <View style={styles.avatarContainer}>
-                  <Image
-                    source={{ uri: currentData.avatar }}
-                    style={styles.avatar}
-                  />
-                  <TouchableOpacity style={styles.changePhotoButton} onPress={handleChangePhoto}>
-                    <Text style={styles.changePhotoIcon}>📷</Text>
-                  </TouchableOpacity>
-                </View>
-                <Text style={styles.changePhotoText}>Tap to change photo</Text>
-              </View>
-
-              {/* Name */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Name *</Text>
-                <TextInput
-                  style={[styles.input, styles.textInput, (errors.name && touched.name) && styles.inputError]}
-                  value={currentData.name}
-                  onChangeText={(text) => {
-                    setCurrentData(prev => ({ ...prev, name: text }));
-                    if (errors.name) setErrors(prev => ({ ...prev, name: null }));
-                    setTouched(prev => ({ ...prev, name: true }));
-                  }}
-                  placeholder="Pet's name"
-                  placeholderTextColor="#9CA3AF"
-                  autoCapitalize="words"
-                  autoCorrect={false}
-                />
-                {errors.name && touched.name && <Text style={styles.errorText}>{errors.name}</Text>}
-              </View>
-
-              {/* Row for Pet Type and Gender */}
-              <View style={styles.row}>
-                <View style={[styles.inputContainer, styles.halfWidth]}>
-                  <CustomDropdown
-                    title="Pet Type *"
-                    value={currentData.petType}
-                    onSelect={(value) => {
-                      setCurrentData(prev => ({ ...prev, petType: value, breed: '' }));
-                      setErrors(prev => ({ ...prev, petType: null, breed: null }));
-                      setTouched(prev => ({ ...prev, petType: true }));
-                    }}
-                    options={petTypeOptions}
-                    error={errors.petType && touched.petType ? errors.petType : null}
-                    placeholder="Select type"
-                  />
-                </View>
-
-                <View style={[styles.inputContainer, styles.halfWidth]}>
-                  <CustomDropdown
-                    title="Gender *"
-                    value={currentData.petGender}
-                    onSelect={(value) => {
-                      setCurrentData(prev => ({ ...prev, petGender: value }));
-                      setErrors(prev => ({ ...prev, petGender: null }));
-                      setTouched(prev => ({ ...prev, petGender: true }));
-                    }}
-                    options={petGenderOptions}
-                    error={errors.petGender && touched.petGender ? errors.petGender : null}
-                    placeholder="Select gender"
-                  />
-                </View>
-              </View>
-
-              {/* Row for Breed and Age */}
-              <View style={styles.row}>
-                <View style={[styles.inputContainer, styles.halfWidth]}>
-                  <CustomDropdown
-                    title="Breed *"
-                    value={currentData.breed}
-                    onSelect={(value) => {
-                      setCurrentData(prev => ({ ...prev, breed: value }));
-                      setErrors(prev => ({ ...prev, breed: null }));
-                      setTouched(prev => ({ ...prev, breed: true }));
-                    }}
-                    options={currentBreedOptions}
-                    error={errors.breed && touched.breed ? errors.breed : null}
-                    placeholder={currentBreedsPlaceholder}
-                    loading={currentLoadingBreeds}
-                  />
-                </View>
-
-                <View style={[styles.inputContainer, styles.halfWidth]}>
-                  <Text style={styles.label}>Age (years) *</Text>
-                  <TextInput
-                    style={[styles.input, styles.textInput, (errors.age && touched.age) && styles.inputError]}
-                    value={currentData.age}
-                    onChangeText={(text) => {
-                      setCurrentData(prev => ({ ...prev, age: text }));
-                      if (errors.age) setErrors(prev => ({ ...prev, age: null }));
-                      setTouched(prev => ({ ...prev, age: true }));
-                    }}
-                    placeholder="Age"
-                    placeholderTextColor="#9CA3AF"
-                    keyboardType="numeric"
-                  />
-                  {errors.age && touched.age && <Text style={styles.errorText}>{errors.age}</Text>}
-                </View>
-              </View>
-
-              {/* Weight */}
-              <View style={styles.inputContainer}>
-                <Text style={styles.label}>Weight (kg)</Text>
-                <TextInput
-                  style={[styles.input, styles.textInput]}
-                  value={currentData.weight}
-                  onChangeText={(text) => {
-                    setCurrentData(prev => ({ ...prev, weight: text }));
-                    if (errors.weight) setErrors(prev => ({ ...prev, weight: null }));
-                    setTouched(prev => ({ ...prev, weight: true }));
-                  }}
-                  placeholder="Weight"
-                  placeholderTextColor="#9CA3AF"
-                  keyboardType="numeric"
-                />
-                {errors.weight && touched.weight && <Text style={styles.errorText}>{errors.weight}</Text>}
-              </View>
-            </>
-          )}
-          {activeMode === 'remove' && renderPetsList()}
-        </ScrollView>
-
-        {(activeMode === 'edit' || activeMode === 'add') && (
-          <TouchableOpacity
-            onPress={handleBottomSave}
-            disabled={isSaving}
-            activeOpacity={0.8}
-          >
-            <LinearGradient
-              colors={['#7C3AED', '#EC4899']}
-              style={styles.bottomSaveButton}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 0 }}
+          {/* Breed */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Breed *</Text>
+            <TouchableOpacity
+              style={[
+                styles.breedSelector,
+                errors.breed && styles.inputError,
+                !formData.petType && styles.selectorDisabled,
+              ]}
+              onPress={openBreedModal}
+              disabled={!formData.petType || loadingBreeds}
+              activeOpacity={0.7}
             >
-              <Text style={styles.bottomSaveButtonText}>{isSaving ? 'Saving...' : 'Save'}</Text>
-            </LinearGradient>
-          </TouchableOpacity>
-        )}
-      </KeyboardAvoidingView>
+              <Text style={[styles.breedSelectorText, !formData.breed && styles.placeholderText]}>
+                {formData.breed
+                  ? getBreedOptions().find(b => b.value === formData.breed)?.label
+                  : formData.petType
+                  ? loadingBreeds ? 'Loading...' : `Select ${formData.petType} breed`
+                  : 'Select pet type first'}
+              </Text>
+              <Ionicons name="chevron-down" size={DESIGN.ICON_SIZES.sm} color={DESIGN.COLORS.gray400} />
+            </TouchableOpacity>
+            {errors.breed && <Text style={styles.errorText}>{errors.breed}</Text>}
+          </View>
+
+          {/* Age and Weight */}
+          <View style={styles.row}>
+            <View style={styles.halfInput}>
+              <Text style={styles.label}>Age (years) *</Text>
+              <TextInput
+                style={[styles.textInput, errors.age && styles.inputError]}
+                placeholder="0"
+                placeholderTextColor={DESIGN.COLORS.gray400}
+                keyboardType="numeric"
+                value={formData.age}
+                onChangeText={(text) => updateField('age', text)}
+              />
+              {errors.age && <Text style={styles.errorText}>{errors.age}</Text>}
+            </View>
+
+            <View style={styles.halfInput}>
+              <Text style={styles.label}>Weight (kg)</Text>
+              <TextInput
+                style={[styles.textInput, errors.weight && styles.inputError]}
+                placeholder="0.0"
+                placeholderTextColor={DESIGN.COLORS.gray400}
+                keyboardType="numeric"
+                value={formData.weight}
+                onChangeText={(text) => updateField('weight', text)}
+              />
+              {errors.weight && <Text style={styles.errorText}>{errors.weight}</Text>}
+            </View>
+          </View>
+
+          {/* Gender */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Gender *</Text>
+            <View style={styles.genderContainer}>
+              {['Male', 'Female'].map((gender) => (
+                <TouchableOpacity
+                  key={gender}
+                  style={[
+                    styles.genderOption,
+                    formData.petGender === gender && styles.genderOptionSelected,
+                  ]}
+                  onPress={() => updateField('petGender', gender)}
+                  activeOpacity={0.7}
+                >
+                  <Ionicons
+                    name={gender === 'Male' ? 'male' : 'female'}
+                    size={DESIGN.ICON_SIZES.sm}
+                    color={formData.petGender === gender ? DESIGN.COLORS.white : DESIGN.COLORS.primary}
+                  />
+                  <Text style={[
+                    styles.genderText,
+                    formData.petGender === gender && styles.genderTextSelected,
+                  ]}>
+                    {gender}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+            {errors.petGender && <Text style={styles.errorText}>{errors.petGender}</Text>}
+          </View>
+
+          {/* Info Card */}
+          <View style={styles.infoCard}>
+            <Ionicons name="information-circle" size={DESIGN.ICON_SIZES.md} color={DESIGN.COLORS.info} />
+            <Text style={styles.infoText}>
+              All fields marked with * are required to add your pet.
+            </Text>
+          </View>
+        </Animated.View>
+      </ScrollView>
+
+      {/* Submit Button */}
+      <View style={styles.submitContainer}>
+        <TouchableOpacity
+          style={[styles.submitButton, isSaving && styles.submitButtonDisabled]}
+          onPress={handleAddPet}
+          disabled={isSaving}
+          activeOpacity={0.8}
+        >
+          <LinearGradient colors={DESIGN.GRADIENTS.primary} style={styles.submitGradient}>
+            {isSaving ? (
+              <ActivityIndicator size="small" color={DESIGN.COLORS.white} />
+            ) : (
+              <>
+                <Ionicons name="checkmark-circle" size={DESIGN.ICON_SIZES.md} color={DESIGN.COLORS.white} />
+                <Text style={styles.submitText}>Add Pet</Text>
+              </>
+            )}
+          </LinearGradient>
+        </TouchableOpacity>
+      </View>
+
+      {/* Breed Selection Modal */}
+      <Modal
+        visible={showBreedModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowBreedModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                Select {formData.petType === 'dog' ? 'Dog' : 'Cat'} Breed
+              </Text>
+              <TouchableOpacity onPress={() => setShowBreedModal(false)}>
+                <Ionicons name="close" size={DESIGN.ICON_SIZES.md} color={DESIGN.COLORS.gray700} />
+              </TouchableOpacity>
+            </View>
+
+            <View style={styles.searchContainer}>
+              <Ionicons name="search" size={DESIGN.ICON_SIZES.sm} color={DESIGN.COLORS.gray400} />
+              <TextInput
+                style={styles.searchInput}
+                placeholder="Search breeds..."
+                value={breedSearch}
+                onChangeText={handleBreedSearch}
+                placeholderTextColor={DESIGN.COLORS.gray400}
+              />
+            </View>
+
+            <FlatList
+              data={filteredBreeds}
+              renderItem={renderBreedItem}
+              keyExtractor={(item) => item.value}
+              style={styles.breedList}
+              showsVerticalScrollIndicator={false}
+            />
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
 
-// ... styles remain exactly the same ...
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#F9FAFB' },
-  flex: { flex: 1 },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  loadingText: { fontSize: moderateScale(16), color: '#6B7280', marginTop: verticalScale(10) },
-  header: { 
-    paddingHorizontal: scale(20), 
-    paddingTop: verticalScale(10),
-    paddingBottom: verticalScale(15),
-    borderBottomLeftRadius: moderateScale(20),
-    borderBottomRightRadius: moderateScale(20),
+  container: {
+    flex: 1,
+    backgroundColor: "#F0F4FF",
   },
-  headerContent: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' }, 
-  backButton: { fontSize: moderateScale(28), color: '#FFFFFF', fontWeight: '300' },
-  headerTitle: { fontSize: moderateScale(18), fontWeight: '600', color: '#FFFFFF' },
-  placeholder: { width: scale(28) },
-  content: { flex: 1, paddingHorizontal: scale(20) },
-  modeToggleSection: { marginVertical: verticalScale(20), alignItems: 'center' },
-  modeToggleButtons: { 
-    flexDirection: 'row', 
-    backgroundColor: '#FFFFFF', 
-    borderRadius: moderateScale(12), 
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
-  }, 
-  modeButton: { flex: 1, paddingVertical: verticalScale(12), alignItems: 'center', paddingHorizontal: scale(20) }, 
-  activeModeButton: { backgroundColor: '#7C3AED' },
-  modeButtonText: { fontSize: moderateScale(14), color: '#6B7280', fontWeight: '600' }, 
-  activeModeButtonText: { color: '#FFFFFF' },
-  avatarSection: { alignItems: 'center', paddingVertical: verticalScale(10) },
-  avatarContainer: { position: 'relative' },
-  avatar: { width: scale(100), height: scale(100), borderRadius: scale(50), borderWidth: scale(4), borderColor: '#FFFFFF' },
-  changePhotoButton: { 
-    position: 'absolute', 
-    bottom: scale(4), 
-    right: scale(4), 
-    backgroundColor: '#7C3AED', 
-    borderRadius: scale(18), 
-    width: scale(36), 
-    height: scale(36), 
-    alignItems: 'center', 
-    justifyContent: 'center',
-    shadowColor: '#7C3AED',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.3,
-    shadowRadius: 4,
-    elevation: 3,
+  headerGradient: {
+    paddingTop: Platform.OS === 'ios' ? DESIGN.SPACING.xl : DESIGN.SPACING.xxl,
+    paddingBottom: DESIGN.SPACING.md,
   },
-  changePhotoIcon: { fontSize: moderateScale(15) },
-  changePhotoText: { fontSize: moderateScale(14), color: '#6b7280' },
-  row: {
+  header: {
     flexDirection: 'row',
+    alignItems: 'center',
     justifyContent: 'space-between',
+    paddingHorizontal: DESIGN.SPACING.lg,
   },
-  halfWidth: {
-    width: '48%',
+  backButton: {
+    padding: DESIGN.SPACING.xs,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderRadius: DESIGN.RADIUS.md,
   },
-  inputContainer: {
-    marginBottom: verticalScale(12),
+  headerTitle: {
+    fontSize: DESIGN.TYPOGRAPHY.h2,
+    fontWeight: DESIGN.FONT_WEIGHTS.bold,
+    color: DESIGN.COLORS.white,
   },
-  label: { 
-    fontSize: moderateScale(14), 
-    fontWeight: '500', 
-    color: '#374151', 
-    marginBottom: verticalScale(8) 
+  placeholder: {
+    width: DESIGN.ICON_SIZES.xl,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#e5e7eb',
-    borderRadius: moderateScale(8),
-    backgroundColor: '#f9fafb',
-    minHeight: verticalScale(36),
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    padding: DESIGN.SPACING.lg,
+    paddingBottom: DESIGN.SPACING.xxl,
+  },
+  formContainer: {
+    gap: DESIGN.SPACING.lg,
+  },
+  avatarSection: {
+    alignItems: 'center',
+    marginBottom: DESIGN.SPACING.md,
+  },
+  avatarContainer: {
+    position: 'relative',
+    marginBottom: DESIGN.SPACING.sm,
+  },
+  avatar: {
+    width: DESIGN.AVATAR_SIZES.xxl,
+    height: DESIGN.AVATAR_SIZES.xxl,
+    borderRadius: DESIGN.AVATAR_SIZES.xxl / 2,
+    borderWidth: 4,
+    borderColor: DESIGN.COLORS.white,
+    ...DESIGN.SHADOWS.lg,
+  },
+  cameraButton: {
+    position: 'absolute',
+    bottom: 0,
+    right: 0,
+    backgroundColor: DESIGN.COLORS.primary,
+    width: DESIGN.ICON_SIZES.xl,
+    height: DESIGN.ICON_SIZES.xl,
+    borderRadius: DESIGN.ICON_SIZES.xl / 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 3,
+    borderColor: DESIGN.COLORS.white,
+    ...DESIGN.SHADOWS.sm,
+  },
+  avatarText: {
+    fontSize: DESIGN.TYPOGRAPHY.caption,
+    color: DESIGN.COLORS.gray600,
+    fontWeight: DESIGN.FONT_WEIGHTS.medium,
+  },
+  inputGroup: {
+    gap: DESIGN.SPACING.xs,
+  },
+  label: {
+    fontSize: DESIGN.TYPOGRAPHY.bodySmall,
+    fontWeight: DESIGN.FONT_WEIGHTS.semibold,
+    color: DESIGN.COLORS.gray700,
   },
   textInput: {
-    fontSize: moderateScale(16), 
-    color: '#1f2937', 
-    paddingVertical: verticalScale(8), 
-    paddingHorizontal: scale(12) 
+    ...DESIGN.COMMON_STYLES.input,
   },
   inputError: {
-    borderColor: '#E74C3C',
-    backgroundColor: '#fef7f7',
-  },
-  dropdownContainer: {
-    paddingHorizontal: 0,
-    paddingVertical: 0,
-  },
-  dropdownContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: scale(12),
-    minHeight: verticalScale(36),
-  },
-  dropdownText: {
-    flex: 1,
-    fontSize: moderateScale(16),
-    color: '#1f2937',
-    fontWeight: '500',
-  },
-  placeholderText: {
-    color: '#999',
-    fontWeight: '400',
-  },
-  dropdownArrow: {
-    fontSize: moderateScale(12),
-    color: '#2563EB',
-    marginLeft: scale(8),
-    transform: [{ rotate: '0deg' }],
-  },
-  dropdownArrowOpen: {
-    transform: [{ rotate: '180deg' }],
-  },
-  loadingIcon: {
-    marginRight: scale(8),
+    borderColor: DESIGN.COLORS.error,
+    borderWidth: 2,
   },
   errorText: {
-    color: '#E74C3C',
-    fontSize: moderateScale(10),
-    marginTop: verticalScale(2),
-    fontWeight: '500',
-    marginLeft: scale(2),
+    fontSize: DESIGN.TYPOGRAPHY.caption,
+    color: DESIGN.COLORS.error,
+    marginTop: DESIGN.SPACING.xxs,
   },
+  typeContainer: {
+    flexDirection: 'row',
+    gap: DESIGN.SPACING.sm,
+  },
+  typeOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: DESIGN.COLORS.surface,
+    padding: DESIGN.SPACING.md,
+    borderRadius: DESIGN.RADIUS.lg,
+    borderWidth: 2,
+    borderColor: DESIGN.COLORS.gray200,
+    gap: DESIGN.SPACING.xs,
+    ...DESIGN.SHADOWS.sm,
+  },
+  typeOptionSelected: {
+    borderColor: DESIGN.COLORS.primary,
+    backgroundColor: DESIGN.COLORS.primary,
+  },
+  typeText: {
+    fontSize: DESIGN.TYPOGRAPHY.body,
+    fontWeight: DESIGN.FONT_WEIGHTS.semibold,
+    color: DESIGN.COLORS.gray700,
+  },
+  typeTextSelected: {
+    color: DESIGN.COLORS.white,
+  },
+  breedSelector: {
+    ...DESIGN.COMMON_STYLES.input,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  selectorDisabled: {
+    opacity: 0.5,
+  },
+  breedSelectorText: {
+    flex: 1,
+    fontSize: DESIGN.TYPOGRAPHY.input,
+    color: DESIGN.COLORS.gray900,
+  },
+  placeholderText: {
+    color: DESIGN.COLORS.gray400,
+  },
+  row: {
+    flexDirection: 'row',
+    gap: DESIGN.SPACING.sm,
+  },
+  halfInput: {
+    flex: 1,
+    gap: DESIGN.SPACING.xs,
+  },
+  genderContainer: {
+    flexDirection: 'row',
+    gap: DESIGN.SPACING.sm,
+  },
+  genderOption: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: DESIGN.COLORS.surface,
+    padding: DESIGN.SPACING.md,
+    borderRadius: DESIGN.RADIUS.lg,
+    borderWidth: 2,
+    borderColor: DESIGN.COLORS.gray200,
+    gap: DESIGN.SPACING.xs,
+    ...DESIGN.SHADOWS.sm,
+  },
+  genderOptionSelected: {
+    borderColor: DESIGN.COLORS.primary,
+    backgroundColor: DESIGN.COLORS.primary,
+  },
+  genderText: {
+    fontSize: DESIGN.TYPOGRAPHY.body,
+    fontWeight: DESIGN.FONT_WEIGHTS.semibold,
+    color: DESIGN.COLORS.gray700,
+  },
+  genderTextSelected: {
+    color: DESIGN.COLORS.white,
+  },
+  infoCard: {
+    flexDirection: 'row',
+    backgroundColor: `${DESIGN.COLORS.info}15`,
+    padding: DESIGN.SPACING.md,
+    borderRadius: DESIGN.RADIUS.lg,
+    gap: DESIGN.SPACING.sm,
+    borderWidth: 1,
+    borderColor: `${DESIGN.COLORS.info}30`,
+  },
+  infoText: {
+    flex: 1,
+    fontSize: DESIGN.TYPOGRAPHY.bodySmall,
+    color: DESIGN.COLORS.info,
+    lineHeight: DESIGN.TYPOGRAPHY.bodySmall * 1.4,
+  },
+  submitContainer: {
+    padding: DESIGN.SPACING.lg,
+    paddingBottom: Platform.OS === 'ios' ? DESIGN.SPACING.xl : DESIGN.SPACING.lg,
+    backgroundColor: DESIGN.COLORS.background,
+    borderTopWidth: 1,
+    borderTopColor: DESIGN.COLORS.gray100,
+  },
+  submitButton: {
+    borderRadius: DESIGN.RADIUS.lg,
+    overflow: 'hidden',
+    ...DESIGN.SHADOWS.lg,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
+  },
+  submitGradient: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    height: DESIGN.BUTTON_HEIGHTS.lg,
+    gap: DESIGN.SPACING.sm,
+  },
+  submitText: {
+    fontSize: DESIGN.TYPOGRAPHY.button,
+    fontWeight: DESIGN.FONT_WEIGHTS.bold,
+    color: DESIGN.COLORS.white,
+  },
+  // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.6)',
-    justifyContent: 'center',
-    alignItems: 'center',
+    backgroundColor: DESIGN.COLORS.overlay,
+    justifyContent: 'flex-end',
   },
-  dropdownModalContent: {
-    backgroundColor: '#fff',
-    borderRadius: moderateScale(12),
-    width: '90%',
-    maxHeight: '70%',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.25,
-    shadowRadius: 16,
-    elevation: 12,
+  modalContent: {
+    backgroundColor: DESIGN.COLORS.surface,
+    borderTopLeftRadius: DESIGN.RADIUS.xxl,
+    borderTopRightRadius: DESIGN.RADIUS.xxl,
+    height: '75%',
+    ...DESIGN.SHADOWS.xl,
   },
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(12),
+    padding: DESIGN.SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#f0f0f0',
+    borderBottomColor: DESIGN.COLORS.gray100,
   },
   modalTitle: {
-    fontSize: moderateScale(16),
-    fontWeight: '700',
-    color: '#2c3e50',
+    fontSize: DESIGN.TYPOGRAPHY.h3,
+    fontWeight: DESIGN.FONT_WEIGHTS.bold,
+    color: DESIGN.COLORS.gray900,
   },
-  optionsList: {
-    maxHeight: verticalScale(300),
+  searchContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: DESIGN.COLORS.gray50,
+    margin: DESIGN.SPACING.lg,
+    paddingHorizontal: DESIGN.SPACING.md,
+    borderRadius: DESIGN.RADIUS.md,
+    gap: DESIGN.SPACING.xs,
   },
-  optionItem: {
+  searchInput: {
+    flex: 1,
+    height: DESIGN.INPUT_HEIGHTS.sm,
+    fontSize: DESIGN.TYPOGRAPHY.body,
+    color: DESIGN.COLORS.gray900,
+  },
+  breedList: {
+    flex: 1,
+  },
+  breedItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(12),
+    paddingVertical: DESIGN.SPACING.md,
+    paddingHorizontal: DESIGN.SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#f8f9fa',
+    borderBottomColor: DESIGN.COLORS.gray100,
   },
-  lastOptionItem: {
-    borderBottomWidth: 0,
+  breedItemSelected: {
+    backgroundColor: `${DESIGN.COLORS.primary}10`,
   },
-  selectedOptionItem: {
-    backgroundColor: '#f0f7ff',
+  breedText: {
+    fontSize: DESIGN.TYPOGRAPHY.body,
+    color: DESIGN.COLORS.gray900,
   },
-  optionText: {
-    fontSize: moderateScale(14),
-    color: '#2c3e50',
-    flex: 1,
-    fontWeight: '500',
+  breedTextSelected: {
+    color: DESIGN.COLORS.primary,
+    fontWeight: DESIGN.FONT_WEIGHTS.semibold,
   },
-  selectedOptionText: {
-    color: '#2563EB',
-    fontWeight: '600',
-  },
-  checkMark: {
-    fontSize: moderateScale(16),
-    color: '#2563EB',
-    fontWeight: 'bold',
-    marginLeft: scale(8),
-  },
-  closeButton: {
-    padding: scale(6),
-    borderRadius: moderateScale(16),
-    backgroundColor: '#f8f9fa',
-  },
-  closeButtonText: {
-    fontSize: moderateScale(14),
-    color: '#666',
-    fontWeight: '600',
-  },
-  bottomSaveButton: { width: "70%", alignSelf: "center", backgroundColor: '#2563EB', borderRadius: scale(12), paddingVertical: verticalScale(15), alignItems: 'center' },
-  bottomSaveButtonText: { color: '#fff', fontSize: moderateScale(16), fontWeight: '600' },
-  petsListSection: { marginVertical: verticalScale(16) },
-  petListItem: { flexDirection: 'row', alignItems: 'center', marginBottom: verticalScale(12), backgroundColor: '#fff', padding: scale(12), borderRadius: scale(12), shadowColor: '#000', shadowOpacity: 0.05, shadowRadius: 10, shadowOffset: { width: 0, height: 2 }, elevation: 2 },
-  petListImage: { width: scale(60), height: scale(60), borderRadius: scale(30) },
-  petListInfo: { flex: 1, marginLeft: scale(12) },
-  petListName: { fontSize: moderateScale(16), fontWeight: '600', color: '#111827' },
-  petListDetails: { fontSize: moderateScale(12), color: '#6b7280' },
-  deletePetButton: { padding: scale(8) },
-  deletePetButtonText: { fontSize: moderateScale(16), color: '#dc2626' },
-  noPetsText: { textAlign: 'center', color: '#6b7280', fontSize: moderateScale(14), marginTop: verticalScale(20) },
-  sectionTitle: { fontSize: moderateScale(16), fontWeight: '600', color: '#374151', marginBottom: verticalScale(12) },
 });
 
 export default EditPetProfile;

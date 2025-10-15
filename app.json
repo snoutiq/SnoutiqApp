@@ -1,41 +1,71 @@
 {
   "expo": {
-    "name": "snoutiq_expo_app",
+    "name": "SnoutIQ",
     "slug": "snoutiq_expo_app",
     "version": "1.0.0",
+
     "newArchEnabled": true,
+    "orientation": "portrait",
+    "scheme": "snoutiq",
+    "userInterfaceStyle": "light",
+    "platforms": ["ios", "android", "web"],
+
+    "icon": "src/assets/favicon-512.png",
+    "splash": {
+      "image": "src/assets/favicon-512.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#ffffff"
+    },
+
+    "updates": {
+      "enabled": true,
+      "checkAutomatically": "ON_LOAD",           
+      "fallbackToCacheTimeout": 0,              
+      "url": "https://u.expo.dev/89cfe25b-4816-4959-b703-8f297511131a"
+    },
+
+    "runtimeVersion": {
+      "policy": "appVersion"                    
+    },
+
+    "android": {
+      "package": "com.snoutiq.snoutiq_expo_app",
+      "versionCode": 1,
+      "permissions": [
+        "android.permission.CAMERA",
+        "android.permission.RECORD_AUDIO",
+        "android.permission.MODIFY_AUDIO_SETTINGS",
+        "android.permission.INTERNET",
+        "android.permission.ACCESS_NETWORK_STATE",
+        "android.permission.READ_EXTERNAL_STORAGE",
+        "android.permission.WRITE_EXTERNAL_STORAGE"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "src/assets/favicon-512.png",
+        "backgroundColor": "#ffffff"
+      }
+    },
+
+    "ios": {
+      "bundleIdentifier": "com.snoutiq.snoutiq_expo_app",
+      "supportsTablet": true,
+      "infoPlist": {
+        "NSCameraUsageDescription": "SnoutIQ needs access to your camera for video calls.",
+        "NSMicrophoneUsageDescription": "SnoutIQ needs access to your microphone for audio and video calls."
+      }
+    },
+
     "web": {
       "bundler": "metro",
-      "output": "static"
+      "output": "static",
+      "favicon": "src/assets/favicon-512.png"
     },
-    "experiments": {
-      "typedRoutes": true
-    },
+
     "extra": {
       "router": {},
       "eas": {
         "projectId": "89cfe25b-4816-4959-b703-8f297511131a"
       }
-    },
-    "android": {
-      "permissions": [
-        "android.permission.CAMERA",
-        "android.permission.RECORD_AUDIO",
-        "android.permission.MODIFY_AUDIO_SETTINGS"
-      ],
-      "package": "com.snoutiq.snoutiq_expo_app"
-    },
-    "ios": {
-      "infoPlist": {
-        "NSCameraUsageDescription": "This app needs camera access for video calls.",
-        "NSMicrophoneUsageDescription": "This app needs microphone access for video calls."
-      }
-    },
-    "icon": "src/assets/favicon-512.webp",
-    "splash": {
-      "image": "src/assets/favicon-512.webp",
-      "resizeMode": "contain",
-      "backgroundColor": "#ffffff"
     }
   }
 }

@@ -1,345 +1,78 @@
-// import React, { useState, useContext, useEffect } from 'react';
-// import {
-//     View,
-//     Text,
-//     StyleSheet,
-//     ScrollView,
-//     TouchableOpacity,
-//     TextInput,
-//     Alert,
-//     ActivityIndicator
-// } from 'react-native';
-// import { Ionicons, MaterialIcons } from '@expo/vector-icons';
-// import { AuthContext } from '../context/AuthContext';
-// import { SafeAreaView } from 'react-native-safe-area-context';
-
-// const ChangePasswordScreen = ({ navigation, route }) => {
-//     const { changePassword, user } = useContext(AuthContext);
-//     const [currentPassword, setCurrentPassword] = useState('');
-//     const [newPassword, setNewPassword] = useState('');
-//     const [confirmPassword, setConfirmPassword] = useState('');
-//     const [showCurrentPassword, setShowCurrentPassword] = useState(false);
-//     const [showNewPassword, setShowNewPassword] = useState(false);
-//     const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-//     const [isLoading, setIsLoading] = useState(false);
-
-//     // Check if user signed in via Google (has no password)
-//     const isGoogleUser = !user.hasPassword;
-//     const [passwordStrength, setPasswordStrength] = useState(0);
-
-//     useEffect(() => {
-//         let strength = 0;
-//         if (newPassword.length >= 8) strength++;
-//         if (/[A-Z]/.test(newPassword)) strength++;
-//         if (/[0-9]/.test(newPassword)) strength++;
-//         if (/[^A-Za-z0-9]/.test(newPassword)) strength++;
-//         setPasswordStrength(strength);
-//     }, [newPassword]);
-
-//     const isGoogleOnlyUser = user.provider === 'google';
-//     const hasExistingPassword = user.provider === 'local' || user.provider === 'both';
-
-//     const handleChangePassword = async () => {
-//         // Common validations
-//         if (!newPassword || !confirmPassword) {
-//             Alert.alert('Error', 'Please fill in all fields');
-//             return;
-//         }
-
-//         if (newPassword !== confirmPassword) {
-//             Alert.alert('Error', 'New passwords do not match');
-//             return;
-//         }
-
-//         if (newPassword.length < 8) {
-//             Alert.alert('Error', 'Password must be at least 8 characters long');
-//             return;
-//         }
-
-//         // Special validation for users with existing passwords
-//         if (hasExistingPassword && !currentPassword) {
-//             Alert.alert('Error', 'Current password is required');
-//             return;
-//         }
-
-//         setIsLoading(true);
-//         try {
-//             await changePassword(
-//                 hasExistingPassword ? currentPassword : null,
-//                 newPassword,
-//                 isGoogleOnlyUser
-//             );
-//             Alert.alert('Success',
-//                 isGoogleOnlyUser ? 'Password set successfully' : 'Password changed successfully'
-//             );
-//             navigation.goBack();
-//         } catch (error) {
-//             Alert.alert('Error', error.message);
-//         } finally {
-//             setIsLoading(false);
-//         }
-//     };
-//     return (
-//         <SafeAreaView style={styles.container}
-//             contentContainerStyle={styles.contentContainer}>
-//             <ScrollView
-//                 keyboardShouldPersistTaps="handled"
-//             >
-//                 {/* Header */}
-//                 <View style={styles.header}>
-//                     <Ionicons
-//                         name="arrow-back"
-//                         size={24}
-//                         color="#333"
-//                         onPress={() => navigation.goBack()}
-//                     />
-//                     <Text style={styles.headerTitle}>
-//                         {isGoogleUser ? 'Set Password' : 'Change Password'}
-//                     </Text>
-//                     <View style={{ width: 24 }} />
-//                 </View>
-
-//                 {/* Password Requirements */}
-//                 <View style={styles.infoCard}>
-//                     <Text style={styles.infoTitle}>Password Requirements</Text>
-//                     <View style={styles.requirementItem}>
-//                         <MaterialIcons
-//                             name={newPassword.length >= 8 ? "check-circle" : "radio-button-unchecked"}
-//                             size={16}
-//                             color={newPassword.length >= 8 ? "#4CAF50" : "#666"}
-//                         />
-//                         <Text style={styles.requirementText}>At least 8 characters</Text>
-//                     </View>
-//                     <View style={styles.requirementItem}>
-//                         <MaterialIcons
-//                             name={/[A-Z]/.test(newPassword) ? "check-circle" : "radio-button-unchecked"}
-//                             size={16}
-//                             color={/[A-Z]/.test(newPassword) ? "#4CAF50" : "#666"}
-//                         />
-//                         <Text style={styles.requirementText}>At least one uppercase letter</Text>
-//                     </View>
-//                     <View style={styles.requirementItem}>
-//                         <MaterialIcons
-//                             name={/[0-9]/.test(newPassword) ? "check-circle" : "radio-button-unchecked"}
-//                             size={16}
-//                             color={/[0-9]/.test(newPassword) ? "#4CAF50" : "#666"}
-//                         />
-//                         <Text style={styles.requirementText}>At least one number</Text>
-//                     </View>
-//                     <View style={styles.requirementItem}>
-//                         <MaterialIcons
-//                             name={/[^A-Za-z0-9]/.test(newPassword) ? "check-circle" : "radio-button-unchecked"}
-//                             size={16}
-//                             color={/[^A-Za-z0-9]/.test(newPassword) ? "#4CAF50" : "#666"}
-//                         />
-//                         <Text style={styles.requirementText}>At least one special character</Text>
-//                     </View>
-//                 </View>
-
-//                 {/* Current Password (only for non-Google users) */}
-//                 {hasExistingPassword && (
-//                     <View style={styles.inputContainer}>
-//                         <Text style={styles.label}>Current Password</Text>
-//                         <View style={styles.passwordInput}>
-//                             <TextInput
-//                                 style={styles.input}
-//                                 placeholder="Enter current password"
-//                                 placeholderTextColor="#999"
-//                                 secureTextEntry={!showCurrentPassword}
-//                                 value={currentPassword}
-//                                 onChangeText={setCurrentPassword}
-//                                 autoCapitalize="none"
-//                             />
-//                             <TouchableOpacity onPress={() => setShowCurrentPassword(!showCurrentPassword)}>
-//                                 <MaterialIcons
-//                                     name={showCurrentPassword ? "visibility-off" : "visibility"}
-//                                     size={22}
-//                                     color="#666"
-//                                 />
-//                             </TouchableOpacity>
-//                         </View>
-//                     </View>
-//                 )}
-
-
-//                 {/* New Password */}
-//                 <View style={styles.inputContainer}>
-//                     <Text style={styles.label}>
-//                         {isGoogleUser ? 'Create Password' : 'New Password'}
-//                     </Text>
-//                     <View style={styles.passwordInput}>
-//                         <TextInput
-//                             style={styles.input}
-//                             placeholder={isGoogleUser ? "Create new password" : "Enter new password"}
-//                             placeholderTextColor="#999"
-//                             secureTextEntry={!showNewPassword}
-//                             value={newPassword}
-//                             onChangeText={setNewPassword}
-//                             autoCapitalize="none"
-//                         />
-//                         <TouchableOpacity onPress={() => setShowNewPassword(!showNewPassword)}>
-//                             <MaterialIcons
-//                                 name={showNewPassword ? "visibility-off" : "visibility"}
-//                                 size={22}
-//                                 color="#666"
-//                             />
-//                         </TouchableOpacity>
-//                     </View>
-//                 </View>
-
-//                 {/* Confirm New Password */}
-//                 <View style={styles.inputContainer}>
-//                     <Text style={styles.label}>Confirm New Password</Text>
-//                     <View style={styles.passwordInput}>
-//                         <TextInput
-//                             style={styles.input}
-//                             placeholder="Confirm new password"
-//                             placeholderTextColor="#999"
-//                             secureTextEntry={!showConfirmPassword}
-//                             value={confirmPassword}
-//                             onChangeText={setConfirmPassword}
-//                             autoCapitalize="none"
-//                         />
-//                         <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-//                             <MaterialIcons
-//                                 name={showConfirmPassword ? "visibility-off" : "visibility"}
-//                                 size={22}
-//                                 color="#666"
-//                             />
-//                         </TouchableOpacity>
-//                     </View>
-//                 </View>
-
-//                 {/* Submit Button */}
-//                 <TouchableOpacity
-//                     style={[styles.button, isLoading && styles.buttonDisabled]}
-//                     onPress={handleChangePassword}
-//                     disabled={isLoading}
-//                 >
-//                     {isLoading ? (
-//                         <ActivityIndicator color="#fff" />
-//                     ) : (
-//                         <Text style={styles.buttonText}>
-//                             {isGoogleUser ? 'Set Password' : 'Change Password'}
-//                         </Text>
-//                     )}
-//                 </TouchableOpacity>
-//             </ScrollView>
-//         </SafeAreaView>
-//     );
-// };
-
-// const styles = StyleSheet.create({
-//     container: {
-//         flex: 1,
-//         backgroundColor: '#f8f9fa',
-//     },
-//     contentContainer: {
-//         paddingBottom: 30,
-//     },
-//     header: {
-//         flexDirection: 'row',
-//         justifyContent: 'space-between',
-//         alignItems: 'center',
-//         padding: 16,
-//         backgroundColor: '#fff',
-//         borderBottomWidth: 1,
-//         borderBottomColor: '#eee',
-//     },
-//     headerTitle: {
-//         fontSize: 18,
-//         fontWeight: '600',
-//         color: '#333',
-//     },
-//     infoCard: {
-//         backgroundColor: '#fff',
-//         borderRadius: 12,
-//         padding: 16,
-//         margin: 16,
-//         marginBottom: 8,
-//         shadowColor: '#000',
-//         shadowOffset: { width: 0, height: 1 },
-//         shadowOpacity: 0.1,
-//         shadowRadius: 3,
-//         elevation: 2,
-//     },
-//     infoTitle: {
-//         fontSize: 16,
-//         fontWeight: '600',
-//         color: '#333',
-//         marginBottom: 12,
-//     },
-//     requirementItem: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         marginBottom: 8,
-//     },
-//     requirementText: {
-//         fontSize: 14,
-//         color: '#333',
-//         marginLeft: 8,
-//     },
-//     inputContainer: {
-//         backgroundColor: '#fff',
-//         padding: 16,
-//         marginHorizontal: 16,
-//         marginBottom: 8,
-//         borderRadius: 8,
-//     },
-//     label: {
-//         fontSize: 14,
-//         color: '#666',
-//         marginBottom: 8,
-//     },
-//     passwordInput: {
-//         flexDirection: 'row',
-//         alignItems: 'center',
-//         borderBottomWidth: 1,
-//         borderBottomColor: '#eee',
-//         paddingBottom: 8,
-//     },
-//     input: {
-//         flex: 1,
-//         fontSize: 16,
-//         color: '#333',
-//         paddingVertical: 8,
-//     },
-//     button: {
-//         backgroundColor: '#1783BB',
-//         borderRadius: 8,
-//         padding: 16,
-//         margin: 16,
-//         justifyContent: 'center',
-//         alignItems: 'center',
-//     },
-//     buttonDisabled: {
-//         backgroundColor: '#9e9e9e',
-//     },
-//     buttonText: {
-//         color: '#fff',
-//         fontSize: 16,
-//         fontWeight: '600',
-//     },
-// });
-
-// export default ChangePasswordScreen;
-
+import { Ionicons } from '@expo/vector-icons';
 import { LinearGradient } from 'expo-linear-gradient';
 import { useEffect, useState } from 'react';
 import {
-    KeyboardAvoidingView,
-    Platform,
-    SafeAreaView,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    TouchableOpacity,
-    View,
+  Dimensions,
+  KeyboardAvoidingView,
+  Platform,
+  SafeAreaView,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  TouchableOpacity,
+  View,
+  Alert,
 } from 'react-native';
 
-const ChangePasswordScreen = ({ navigation, route }) => {
- 
+const { width, height } = Dimensions.get('window');
+
+const scale = (size) => (width / 375) * size;
+const verticalScale = (size) => (height / 667) * size;
+const moderateScale = (size, factor = 0.3) => size + (scale(size) - size) * factor;
+
+const DESIGN = {
+  TYPOGRAPHY: {
+    h1: moderateScale(24),
+    h2: moderateScale(20),
+    h3: moderateScale(18),
+    body: moderateScale(15),
+    bodySmall: moderateScale(14),
+    caption: moderateScale(13),
+    tiny: moderateScale(11),
+  },
+  SPACING: {
+    xs: scale(8),
+    sm: scale(12),
+    md: scale(16),
+    lg: scale(20),
+    xl: scale(24),
+    xxl: scale(32),
+  },
+  VERTICAL_SPACING: {
+    xs: verticalScale(8),
+    sm: verticalScale(12),
+    md: verticalScale(16),
+    lg: verticalScale(20),
+    xl: verticalScale(24),
+  },
+  RADIUS: {
+    sm: moderateScale(8),
+    md: moderateScale(12),
+    lg: moderateScale(16),
+    xl: moderateScale(20),
+    full: moderateScale(999),
+  },
+  COLORS: {
+    primary: '#667eea',
+    secondary: '#764ba2',
+    white: '#FFFFFF',
+    gray50: '#F9FAFB',
+    gray100: '#F3F4F6',
+    gray200: '#E5E7EB',
+    gray400: '#9CA3AF',
+    gray600: '#6B7280',
+    gray700: '#374151',
+    gray900: '#1F2937',
+    success: '#10B981',
+    warning: '#F59E0B',
+    error: '#EF4444',
+    info: '#3B82F6',
+    background: '#F0F4FF',
+  },
+};
+
+const ChangePasswordScreen = ({ navigation }) => {
   const [oldPassword, setOldPassword] = useState('');
   const [newPassword, setNewPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -348,49 +81,74 @@ const ChangePasswordScreen = ({ navigation, route }) => {
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
-  // Password validation states
   const [hasMinLength, setHasMinLength] = useState(false);
   const [hasUppercase, setHasUppercase] = useState(false);
+  const [hasNumber, setHasNumber] = useState(false);
   const [hasSpecialChar, setHasSpecialChar] = useState(false);
   const [passwordsMatch, setPasswordsMatch] = useState(false);
 
-  // Validate password requirements
   useEffect(() => {
     setHasMinLength(newPassword.length >= 8);
     setHasUppercase(/[A-Z]/.test(newPassword));
+    setHasNumber(/[0-9]/.test(newPassword));
     setHasSpecialChar(/[!@#$%^&*(),.?":{}|<>]/.test(newPassword));
     setPasswordsMatch(newPassword === confirmPassword && confirmPassword !== '');
   }, [newPassword, confirmPassword]);
 
   const handleChangePassword = () => {
-    if (hasMinLength && hasUppercase && hasSpecialChar && passwordsMatch && oldPassword) {
-      // Add your password change logic here
+    if (!oldPassword) {
+      Alert.alert('Error', 'Please enter your current password');
+      return;
+    }
+    if (hasMinLength && hasUppercase && hasNumber && hasSpecialChar && passwordsMatch) {
+      Alert.alert('Success', 'Password changed successfully!');
+      navigation.goBack();
     } else {
-      console.log('Please meet all requirements');
+      Alert.alert('Error', 'Please meet all password requirements');
     }
   };
 
-  const isFormValid = hasMinLength && hasUppercase && hasSpecialChar && passwordsMatch && oldPassword;
+  const isFormValid = hasMinLength && hasUppercase && hasNumber && hasSpecialChar && passwordsMatch && oldPassword;
+
+  const RequirementItem = ({ met, text }) => (
+    <View style={styles.requirementItem}>
+      <View style={[styles.checkbox, met && styles.checkboxMet]}>
+        {met && <Ionicons name="checkmark" size={scale(14)} color={DESIGN.COLORS.white} />}
+      </View>
+      <Text style={[styles.requirementText, met && styles.requirementTextMet]}>
+        {text}
+      </Text>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#7C3AED', '#EC4899']}
+        colors={[DESIGN.COLORS.primary, DESIGN.COLORS.secondary]}
         style={styles.header}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
-        <TouchableOpacity style={styles.backButton}>
-          <Text style={styles.backIcon}>←</Text>
-        </TouchableOpacity>
-        <Text style={styles.headerTitle}>Change Password</Text>
-        <Text style={styles.headerSubtitle}>Keep your account secure</Text>
+        <View style={styles.headerContent}>
+          <TouchableOpacity 
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons name="chevron-back" size={scale(28)} color={DESIGN.COLORS.white} />
+          </TouchableOpacity>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Change Password</Text>
+            <Text style={styles.headerSubtitle}>Keep your account secure</Text>
+          </View>
+          <View style={styles.headerPlaceholder} />
+        </View>
       </LinearGradient>
 
       <KeyboardAvoidingView 
         behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={styles.flex}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 0 : 0}
+        keyboardVerticalOffset={0}
       >
         <ScrollView 
           style={styles.scrollView}
@@ -399,16 +157,19 @@ const ChangePasswordScreen = ({ navigation, route }) => {
           keyboardShouldPersistTaps="handled"
         >
           <View style={styles.content}>
-            {/* Old Password */}
+            {/* Current Password */}
             <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Old Password (Dummy)</Text>
+              <Text style={styles.label}>Current Password</Text>
               <View style={styles.inputContainer}>
+                <View style={styles.inputIconContainer}>
+                  <Ionicons name="lock-closed-outline" size={scale(20)} color={DESIGN.COLORS.gray400} />
+                </View>
                 <TextInput
                   style={styles.input}
                   value={oldPassword}
                   onChangeText={setOldPassword}
                   placeholder="Enter your current password"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={DESIGN.COLORS.gray400}
                   secureTextEntry={!showOldPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -418,7 +179,11 @@ const ChangePasswordScreen = ({ navigation, route }) => {
                   style={styles.eyeButton}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.eyeIcon}>{showOldPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                  <Ionicons 
+                    name={showOldPassword ? 'eye-outline' : 'eye-off-outline'} 
+                    size={scale(22)} 
+                    color={DESIGN.COLORS.gray600}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
@@ -427,12 +192,15 @@ const ChangePasswordScreen = ({ navigation, route }) => {
             <View style={styles.inputWrapper}>
               <Text style={styles.label}>New Password</Text>
               <View style={styles.inputContainer}>
+                <View style={styles.inputIconContainer}>
+                  <Ionicons name="key-outline" size={scale(20)} color={DESIGN.COLORS.gray400} />
+                </View>
                 <TextInput
                   style={styles.input}
                   value={newPassword}
                   onChangeText={setNewPassword}
                   placeholder="Enter your new password"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={DESIGN.COLORS.gray400}
                   secureTextEntry={!showNewPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -442,21 +210,28 @@ const ChangePasswordScreen = ({ navigation, route }) => {
                   style={styles.eyeButton}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.eyeIcon}>{showNewPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                  <Ionicons 
+                    name={showNewPassword ? 'eye-outline' : 'eye-off-outline'} 
+                    size={scale(22)} 
+                    color={DESIGN.COLORS.gray600}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Confirm Password */}
             <View style={styles.inputWrapper}>
-              <Text style={styles.label}>Confirm Password</Text>
+              <Text style={styles.label}>Confirm New Password</Text>
               <View style={styles.inputContainer}>
+                <View style={styles.inputIconContainer}>
+                  <Ionicons name="checkmark-circle-outline" size={scale(20)} color={DESIGN.COLORS.gray400} />
+                </View>
                 <TextInput
                   style={styles.input}
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   placeholder="Re-enter your new password"
-                  placeholderTextColor="#9CA3AF"
+                  placeholderTextColor={DESIGN.COLORS.gray400}
                   secureTextEntry={!showConfirmPassword}
                   autoCapitalize="none"
                   autoCorrect={false}
@@ -466,224 +241,321 @@ const ChangePasswordScreen = ({ navigation, route }) => {
                   style={styles.eyeButton}
                   activeOpacity={0.7}
                 >
-                  <Text style={styles.eyeIcon}>{showConfirmPassword ? '👁️' : '👁️‍🗨️'}</Text>
+                  <Ionicons 
+                    name={showConfirmPassword ? 'eye-outline' : 'eye-off-outline'} 
+                    size={scale(22)} 
+                    color={DESIGN.COLORS.gray600}
+                  />
                 </TouchableOpacity>
               </View>
             </View>
 
             {/* Password Requirements */}
-            <View style={styles.requirementsContainer}>
-              <Text style={styles.requirementsTitle}>Password Requirements</Text>
+            <View style={styles.requirementsCard}>
+              <View style={styles.requirementsHeader}>
+                <Ionicons name="shield-checkmark" size={scale(20)} color={DESIGN.COLORS.primary} />
+                <Text style={styles.requirementsTitle}>Password Requirements</Text>
+              </View>
               <View style={styles.requirementsList}>
-                <View style={styles.checkboxContainer}>
-                  <View style={[styles.checkbox, hasMinLength && styles.checkboxChecked]}>
-                    {hasMinLength && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <Text style={[styles.checkboxLabel, hasMinLength && styles.checkboxLabelChecked]}>
-                    At least 8 characters
-                  </Text>
+                <RequirementItem met={hasMinLength} text="At least 8 characters" />
+                <RequirementItem met={hasUppercase} text="Contains uppercase letter (A-Z)" />
+                <RequirementItem met={hasNumber} text="Contains number (0-9)" />
+                <RequirementItem met={hasSpecialChar} text="Contains special character (!@#$%)" />
+                <RequirementItem met={passwordsMatch} text="Passwords match" />
+              </View>
+
+              {/* Strength Indicator */}
+              <View style={styles.strengthContainer}>
+                <Text style={styles.strengthLabel}>Password Strength:</Text>
+                <View style={styles.strengthBar}>
+                  <View 
+                    style={[
+                      styles.strengthFill, 
+                      { 
+                        width: `${([hasMinLength, hasUppercase, hasNumber, hasSpecialChar].filter(Boolean).length / 4) * 100}%`,
+                        backgroundColor: 
+                          [hasMinLength, hasUppercase, hasNumber, hasSpecialChar].filter(Boolean).length <= 1 
+                            ? DESIGN.COLORS.error 
+                            : [hasMinLength, hasUppercase, hasNumber, hasSpecialChar].filter(Boolean).length <= 2
+                            ? DESIGN.COLORS.warning
+                            : [hasMinLength, hasUppercase, hasNumber, hasSpecialChar].filter(Boolean).length <= 3
+                            ? DESIGN.COLORS.info
+                            : DESIGN.COLORS.success
+                      }
+                    ]} 
+                  />
                 </View>
-                
-                <View style={styles.checkboxContainer}>
-                  <View style={[styles.checkbox, hasUppercase && styles.checkboxChecked]}>
-                    {hasUppercase && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <Text style={[styles.checkboxLabel, hasUppercase && styles.checkboxLabelChecked]}>
-                    Contains uppercase letter
-                  </Text>
-                </View>
-                
-                <View style={styles.checkboxContainer}>
-                  <View style={[styles.checkbox, hasSpecialChar && styles.checkboxChecked]}>
-                    {hasSpecialChar && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <Text style={[styles.checkboxLabel, hasSpecialChar && styles.checkboxLabelChecked]}>
-                    Contains special character (!@#$%^&*)
-                  </Text>
-                </View>
-                
-                <View style={styles.checkboxContainer}>
-                  <View style={[styles.checkbox, passwordsMatch && styles.checkboxChecked]}>
-                    {passwordsMatch && <Text style={styles.checkmark}>✓</Text>}
-                  </View>
-                  <Text style={[styles.checkboxLabel, passwordsMatch && styles.checkboxLabelChecked]}>
-                    Passwords match
-                  </Text>
-                </View>
+                <Text style={styles.strengthText}>
+                  {[hasMinLength, hasUppercase, hasNumber, hasSpecialChar].filter(Boolean).length <= 1 
+                    ? 'Weak' 
+                    : [hasMinLength, hasUppercase, hasNumber, hasSpecialChar].filter(Boolean).length <= 2
+                    ? 'Fair'
+                    : [hasMinLength, hasUppercase, hasNumber, hasSpecialChar].filter(Boolean).length <= 3
+                    ? 'Good'
+                    : 'Strong'}
+                </Text>
+              </View>
+            </View>
+
+            {/* Help Section */}
+            <View style={styles.helpCard}>
+              <View style={styles.helpIconContainer}>
+                <Ionicons name="information-circle" size={scale(24)} color={DESIGN.COLORS.info} />
+              </View>
+              <View style={styles.helpContent}>
+                <Text style={styles.helpTitle}>Security Tip</Text>
+                <Text style={styles.helpText}>
+                  Choose a strong password that you haven't used before. Avoid using common words or personal information.
+                </Text>
               </View>
             </View>
 
             {/* Change Password Button */}
             <TouchableOpacity 
-              style={[
-                styles.changeButton,
-                !isFormValid && styles.changeButtonDisabled
-              ]}
+              style={[styles.changeButton, !isFormValid && styles.changeButtonDisabled]}
               onPress={handleChangePassword}
               disabled={!isFormValid}
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={isFormValid ? ['#7C3AED', '#EC4899'] : ['#D1D5DB', '#D1D5DB']}
+                colors={isFormValid 
+                  ? [DESIGN.COLORS.primary, DESIGN.COLORS.secondary] 
+                  : [DESIGN.COLORS.gray300, DESIGN.COLORS.gray300]
+                }
                 style={styles.buttonGradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
               >
-                <Text style={styles.changeButtonText}>Change Password</Text>
+                <Ionicons name="shield-checkmark" size={scale(20)} color={DESIGN.COLORS.white} />
+                <Text style={styles.changeButtonText}>Update Password</Text>
               </LinearGradient>
             </TouchableOpacity>
 
-            {/* Help Text */}
-            <View style={styles.helpContainer}>
-              <Text style={styles.helpIcon}>💡</Text>
-              <Text style={styles.helpText}>
-                Choose a strong password that you haven't used before
-              </Text>
-            </View>
+            {/* Forgot Password Link */}
+            <TouchableOpacity 
+              style={styles.forgotButton}
+              onPress={() => Alert.alert('Forgot Password', 'Password reset link will be sent to your email.')}
+              activeOpacity={0.7}
+            >
+              <Text style={styles.forgotText}>Forgot your password?</Text>
+              <Ionicons name="arrow-forward" size={scale(16)} color={DESIGN.COLORS.primary} />
+            </TouchableOpacity>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
-  )
-}
+  );
+};
 
-
+export default ChangePasswordScreen;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: DESIGN.COLORS.background,
   },
   flex: {
     flex: 1,
   },
   header: {
-    paddingHorizontal: 24,
-    paddingTop: 5,
-    paddingBottom: 10,
-    borderBottomLeftRadius: 24,
-    borderBottomRightRadius: 24,
+    paddingHorizontal: DESIGN.SPACING.lg,
+    paddingTop: DESIGN.SPACING.md,
+    paddingBottom: DESIGN.SPACING.xl,
+    borderBottomLeftRadius: DESIGN.RADIUS.xl,
+    borderBottomRightRadius: DESIGN.RADIUS.xl,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
+  },
+  headerContent: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
   },
   backButton: {
-    marginBottom: 16,
+    padding: DESIGN.SPACING.xs,
   },
-  backIcon: {
-    fontSize: 28,
-    color: '#FFFFFF',
+  headerTextContainer: {
+    flex: 1,
+    alignItems: 'center',
   },
   headerTitle: {
-    fontSize: 32,
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    marginBottom: 4,
+    fontSize: DESIGN.TYPOGRAPHY.h1,
+    fontWeight: '700',
+    color: DESIGN.COLORS.white,
+    marginBottom: DESIGN.SPACING.xs / 2,
   },
   headerSubtitle: {
-    fontSize: 16,
-    color: '#FFFFFF',
-    opacity: 0.9,
+    fontSize: DESIGN.TYPOGRAPHY.caption,
+    color: 'rgba(255, 255, 255, 0.85)',
+    fontWeight: '500',
+  },
+  headerPlaceholder: {
+    width: scale(28),
   },
   scrollView: {
     flex: 1,
   },
   scrollContent: {
-    paddingBottom: 40,
+    paddingBottom: DESIGN.SPACING.xxl * 2,
   },
   content: {
-    paddingHorizontal: 24,
-    paddingTop: 32,
+    paddingHorizontal: DESIGN.SPACING.lg,
+    paddingTop: DESIGN.SPACING.xl,
   },
   inputWrapper: {
-    marginBottom: 24,
+    marginBottom: DESIGN.SPACING.lg,
   },
   label: {
-    fontSize: 15,
+    fontSize: DESIGN.TYPOGRAPHY.bodySmall,
     fontWeight: '600',
-    color: '#374151',
-    marginBottom: 10,
+    color: DESIGN.COLORS.gray700,
+    marginBottom: DESIGN.SPACING.sm,
   },
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    borderWidth: 1,
-    borderColor: '#E5E7EB',
+    backgroundColor: DESIGN.COLORS.white,
+    borderRadius: DESIGN.RADIUS.md,
+    borderWidth: 2,
+    borderColor: DESIGN.COLORS.gray200,
     shadowColor: '#000',
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
     shadowRadius: 8,
     elevation: 2,
+  },
+  inputIconContainer: {
+    paddingLeft: DESIGN.SPACING.md,
   },
   input: {
     flex: 1,
-    paddingVertical: 16,
-    paddingHorizontal: 16,
-    fontSize: 16,
-    color: '#111827',
+    paddingVertical: DESIGN.SPACING.md,
+    paddingHorizontal: DESIGN.SPACING.sm,
+    fontSize: DESIGN.TYPOGRAPHY.body,
+    color: DESIGN.COLORS.gray900,
   },
   eyeButton: {
-    paddingHorizontal: 16,
+    paddingHorizontal: DESIGN.SPACING.md,
+    paddingVertical: DESIGN.SPACING.md,
   },
-  eyeIcon: {
-    fontSize: 22,
-  },
-  requirementsContainer: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: 16,
-    padding: 20,
-    marginTop: 8,
-    marginBottom: 32,
+  requirementsCard: {
+    backgroundColor: DESIGN.COLORS.white,
+    borderRadius: DESIGN.RADIUS.lg,
+    padding: DESIGN.SPACING.lg,
+    marginTop: DESIGN.SPACING.md,
+    marginBottom: DESIGN.SPACING.lg,
     shadowColor: '#000',
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 8,
-    elevation: 2,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    elevation: 4,
+    borderWidth: 1,
+    borderColor: 'rgba(102, 126, 234, 0.1)',
   },
-  requirementsTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#374151',
-    marginBottom: 16,
-  },
-  requirementsList: {
-    gap: 12,
-  },
-  checkboxContainer: {
+  requirementsHeader: {
     flexDirection: 'row',
     alignItems: 'center',
+    gap: DESIGN.SPACING.sm,
+    marginBottom: DESIGN.SPACING.md,
+  },
+  requirementsTitle: {
+    fontSize: DESIGN.TYPOGRAPHY.body,
+    fontWeight: '700',
+    color: DESIGN.COLORS.gray900,
+  },
+  requirementsList: {
+    gap: DESIGN.SPACING.md,
+  },
+  requirementItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: DESIGN.SPACING.sm,
   },
   checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: 6,
+    width: scale(22),
+    height: scale(22),
+    borderRadius: scale(6),
     borderWidth: 2,
-    borderColor: '#D1D5DB',
+    borderColor: DESIGN.COLORS.gray300,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: 12,
+    backgroundColor: DESIGN.COLORS.gray100,
   },
-  checkboxChecked: {
-    backgroundColor: '#7C3AED',
-    borderColor: '#7C3AED',
+  checkboxMet: {
+    backgroundColor: DESIGN.COLORS.success,
+    borderColor: DESIGN.COLORS.success,
   },
-  checkmark: {
-    color: '#FFFFFF',
-    fontSize: 16,
-    fontWeight: 'bold',
-  },
-  checkboxLabel: {
-    fontSize: 15,
-    color: '#6B7280',
+  requirementText: {
+    fontSize: DESIGN.TYPOGRAPHY.bodySmall,
+    color: DESIGN.COLORS.gray600,
     flex: 1,
   },
-  checkboxLabelChecked: {
-    color: '#374151',
+  requirementTextMet: {
+    color: DESIGN.COLORS.gray900,
     fontWeight: '500',
   },
-  changeButton: {
-    borderRadius: 16,
+  strengthContainer: {
+    marginTop: DESIGN.SPACING.lg,
+    paddingTop: DESIGN.SPACING.lg,
+    borderTopWidth: 1,
+    borderTopColor: DESIGN.COLORS.gray200,
+  },
+  strengthLabel: {
+    fontSize: DESIGN.TYPOGRAPHY.caption,
+    fontWeight: '600',
+    color: DESIGN.COLORS.gray700,
+    marginBottom: DESIGN.SPACING.sm,
+  },
+  strengthBar: {
+    height: verticalScale(8),
+    backgroundColor: DESIGN.COLORS.gray200,
+    borderRadius: DESIGN.RADIUS.sm,
     overflow: 'hidden',
-    shadowColor: '#7C3AED',
+    marginBottom: DESIGN.SPACING.sm,
+  },
+  strengthFill: {
+    height: '100%',
+    borderRadius: DESIGN.RADIUS.sm,
+  },
+  strengthText: {
+    fontSize: DESIGN.TYPOGRAPHY.caption,
+    fontWeight: '600',
+    color: DESIGN.COLORS.gray600,
+    textAlign: 'right',
+  },
+  helpCard: {
+    flexDirection: 'row',
+    backgroundColor: 'rgba(59, 130, 246, 0.08)',
+    borderRadius: DESIGN.RADIUS.md,
+    padding: DESIGN.SPACING.md,
+    marginBottom: DESIGN.SPACING.xl,
+    borderLeftWidth: 4,
+    borderLeftColor: DESIGN.COLORS.info,
+  },
+  helpIconContainer: {
+    marginRight: DESIGN.SPACING.md,
+  },
+  helpContent: {
+    flex: 1,
+  },
+  helpTitle: {
+    fontSize: DESIGN.TYPOGRAPHY.bodySmall,
+    fontWeight: '700',
+    color: DESIGN.COLORS.info,
+    marginBottom: DESIGN.SPACING.xs / 2,
+  },
+  helpText: {
+    fontSize: DESIGN.TYPOGRAPHY.caption,
+    color: DESIGN.COLORS.gray700,
+    lineHeight: scale(18),
+  },
+  changeButton: {
+    borderRadius: DESIGN.RADIUS.lg,
+    overflow: 'hidden',
+    shadowColor: DESIGN.COLORS.primary,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 12,
@@ -693,32 +565,28 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
   },
   buttonGradient: {
-    paddingVertical: 18,
+    flexDirection: 'row',
+    paddingVertical: DESIGN.SPACING.lg,
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: DESIGN.SPACING.sm,
   },
   changeButtonText: {
-    fontSize: 17,
-    fontWeight: '600',
-    color: '#FFFFFF',
+    fontSize: DESIGN.TYPOGRAPHY.body,
+    fontWeight: '700',
+    color: DESIGN.COLORS.white,
   },
-  helpContainer: {
+  forgotButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 24,
-    padding: 16,
-    backgroundColor: '#FEF3C7',
-    borderRadius: 12,
+    justifyContent: 'center',
+    gap: DESIGN.SPACING.xs,
+    marginTop: DESIGN.SPACING.lg,
+    paddingVertical: DESIGN.SPACING.md,
   },
-  helpIcon: {
-    fontSize: 20,
-    marginRight: 12,
+  forgotText: {
+    fontSize: DESIGN.TYPOGRAPHY.bodySmall,
+    color: DESIGN.COLORS.primary,
+    fontWeight: '600',
   },
-  helpText: {
-    flex: 1,
-    fontSize: 14,
-    color: '#92400E',
-    lineHeight: 20,
-  },
-})
-
-export default  ChangePasswordScreen;
+});

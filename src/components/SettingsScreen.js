@@ -1,9 +1,10 @@
-import { Ionicons } from '@expo/vector-icons';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { LinearGradient } from 'expo-linear-gradient';
-import { useState } from 'react';
+import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { LinearGradient } from "expo-linear-gradient";
+import { useState } from "react";
 import {
   Alert,
+  Dimensions,
   SafeAreaView,
   ScrollView,
   StyleSheet,
@@ -11,215 +12,299 @@ import {
   Text,
   TouchableOpacity,
   View,
-} from 'react-native';
-import { moderateScale, scale, verticalScale } from 'react-native-size-matters';
+} from "react-native";
+import * as Linking from "expo-linking";
+import * as StoreReview from "expo-store-review";
+import * as Sharing from "expo-sharing";
+import * as Clipboard from "expo-clipboard";
+import { Platform } from "react-native";
+import { Share } from "react-native";
+const { width, height } = Dimensions.get("window");
+
+const scale = (size) => (width / 375) * size;
+const verticalScale = (size) => (height / 667) * size;
+const moderateScale = (size, factor = 0.3) =>
+  size + (scale(size) - size) * factor;
+
+const DESIGN = {
+  TYPOGRAPHY: {
+    h1: moderateScale(24),
+    h2: moderateScale(20),
+    h3: moderateScale(18),
+    body: moderateScale(15),
+    bodySmall: moderateScale(14),
+    caption: moderateScale(13),
+    tiny: moderateScale(11),
+  },
+  SPACING: {
+    xs: scale(8),
+    sm: scale(12),
+    md: scale(16),
+    lg: scale(20),
+    xl: scale(24),
+    xxl: scale(32),
+  },
+  VERTICAL_SPACING: {
+    xs: verticalScale(8),
+    sm: verticalScale(12),
+    md: verticalScale(16),
+    lg: verticalScale(20),
+    xl: verticalScale(24),
+  },
+  RADIUS: {
+    sm: moderateScale(8),
+    md: moderateScale(12),
+    lg: moderateScale(16),
+    xl: moderateScale(20),
+    full: moderateScale(999),
+  },
+  COLORS: {
+    primary: "#667eea",
+    secondary: "#764ba2",
+    white: "#FFFFFF",
+    gray50: "#F9FAFB",
+    gray100: "#F3F4F6",
+    gray200: "#E5E7EB",
+    gray400: "#9CA3AF",
+    gray600: "#6B7280",
+    gray700: "#374151",
+    gray900: "#1F2937",
+    success: "#10B981",
+    warning: "#F59E0B",
+    error: "#EF4444",
+    info: "#3B82F6",
+    background: "#F0F4FF",
+  },
+};
 
 const SettingsScreen = ({ navigation }) => {
-  const [notifications, setNotifications] = useState(true);
-  const [darkMode, setDarkMode] = useState(false);
-  const [location, setLocation] = useState(true);
-  const [autoSync, setAutoSync] = useState(false);
 
-  const SettingItem = ({ icon, title, subtitle, type, value, onToggle, onPress }) => (
+  const SettingItem = ({
+    icon,
+    title,
+    subtitle,
+    type,
+    value,
+    onToggle,
+    onPress,
+    iconBg,
+    iconColor,
+  }) => (
     <TouchableOpacity
       style={styles.settingItem}
-      onPress={type === 'navigation' ? onPress : null}
-      activeOpacity={type === 'navigation' ? 0.7 : 1}
+      onPress={type === "navigation" ? onPress : null}
+      activeOpacity={type === "navigation" ? 0.7 : 1}
     >
-      <View style={styles.settingIcon}>
-        <Text style={styles.iconText}>{icon}</Text>
+      <View
+        style={[
+          styles.settingIcon,
+          { backgroundColor: iconBg || DESIGN.COLORS.gray100 },
+        ]}
+      >
+        <Ionicons
+          name={icon}
+          size={scale(22)}
+          color={iconColor || DESIGN.COLORS.primary}
+        />
       </View>
       <View style={styles.settingContent}>
         <Text style={styles.settingTitle}>{title}</Text>
         {subtitle && <Text style={styles.settingSubtitle}>{subtitle}</Text>}
       </View>
-      {type === 'toggle' && (
+      {type === "toggle" && (
         <Switch
           value={value}
           onValueChange={onToggle}
-          trackColor={{ false: '#E5E7EB', true: '#C084FC' }}
-          thumbColor={value ? '#7C3AED' : '#F3F4F6'}
-          style={styles.switch}
+          trackColor={{ false: DESIGN.COLORS.gray200, true: "#C084FC" }}
+          thumbColor={value ? DESIGN.COLORS.primary : DESIGN.COLORS.gray100}
+          ios_backgroundColor={DESIGN.COLORS.gray200}
         />
       )}
-      {type === 'navigation' && (
-        <Ionicons name="chevron-forward" size={moderateScale(20)} color="#D1D5DB" />
+      {type === "navigation" && (
+        <Ionicons
+          name="chevron-forward"
+          size={scale(20)}
+          color={DESIGN.COLORS.gray400}
+        />
       )}
     </TouchableOpacity>
   );
 
-  const SectionHeader = ({ title }) => (
-    <Text style={styles.sectionHeader}>{title}</Text>
+  const SectionHeader = ({ title, icon }) => (
+    <View style={styles.sectionHeaderContainer}>
+      {icon && (
+        <Ionicons name={icon} size={scale(16)} color={DESIGN.COLORS.gray600} />
+      )}
+      <Text style={styles.sectionHeader}>{title}</Text>
+    </View>
   );
 
-  // ✅ Fixed Logout function
-  const handleLogout = () => {
-    Alert.alert(
-      "Logout",
-      "Are you sure you want to logout?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Logout",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              await AsyncStorage.clear(); // clear user data
-              navigation.reset({
-                index: 0,
-                routes: [{ name: 'login' }], // navigate to Login screen
-              });
-            } catch (error) {
-              console.error("Logout error:", error);
-            }
-          },
-        },
-      ]
-    );
-  };
 
   return (
     <SafeAreaView style={styles.container}>
       <LinearGradient
-        colors={['#7C3AED', '#EC4899']}
+        colors={[DESIGN.COLORS.primary, DESIGN.COLORS.secondary]}
         style={styles.header}
         start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 0 }}
+        end={{ x: 1, y: 1 }}
       >
         <View style={styles.headerContent}>
-          <TouchableOpacity onPress={() => navigation.goBack()}>
-            <Ionicons name="chevron-back" size={moderateScale(25)} style={styles.backIcon} />
+          <TouchableOpacity
+            onPress={() => navigation.goBack()}
+            style={styles.backButton}
+            activeOpacity={0.7}
+          >
+            <Ionicons
+              name="chevron-back"
+              size={scale(28)}
+              color={DESIGN.COLORS.white}
+            />
           </TouchableOpacity>
-          <Text style={styles.headerTitle}>Settings</Text>
-          <View style={styles.headerPlaceholder}></View>
+          <View style={styles.headerTextContainer}>
+            <Text style={styles.headerTitle}>Settings</Text>
+            <Text style={styles.headerSubtitle}>Manage your preferences</Text>
+          </View>
+          <View style={styles.headerPlaceholder} />
         </View>
       </LinearGradient>
 
-      <ScrollView style={styles.scrollView} showsVerticalScrollIndicator={false}>
+      <ScrollView
+        style={styles.scrollView}
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={styles.scrollContent}
+      >
         <View style={styles.content}>
-          <SectionHeader title="ACCOUNT" />
+          {/* Account Section */}
+          <SectionHeader title="ACCOUNT" icon="person-outline" />
           <View style={styles.section}>
             <SettingItem
-              icon="👤"
-              title="Edit Profile"
-              subtitle="Update your personal information"
-              type="navigation"
-              onPress={() => navigation.navigate('PetParentEdit')}
-            />
-            <SettingItem
-              icon="🐾"
-              title="Edit Pet Profile"
-              subtitle="Update your Pet information"
-              type="navigation"
-              onPress={() => navigation.navigate('EditPetProfile')}
-            />
-            <SettingItem
-              icon="🔒"
-              title="Privacy & Security"
-              subtitle="Manage your account security"
-              type="navigation"
-              onPress={() => console.log('Navigate to Privacy')}
-            />
-            <SettingItem
-              icon="💳"
+              icon="key-outline"
               title="Change Password"
-              subtitle="Change Your Password"
+              subtitle="Update your password"
               type="navigation"
-              onPress={() => navigation.navigate('ChangePassword')}
+              onPress={() => navigation.navigate("ChangePassword")}
+              iconBg="rgba(245, 158, 11, 0.1)"
+              iconColor={DESIGN.COLORS.warning}
             />
           </View>
-
-          <SectionHeader title="PREFERENCES" />
+          {/* Support Section */}
+          <SectionHeader title="SUPPORT" icon="help-circle-outline" />
           <View style={styles.section}>
             <SettingItem
-              icon="🔔"
-              title="Notifications"
-              subtitle="Push notifications and alerts"
-              type="toggle"
-              value={notifications}
-              onToggle={setNotifications}
-            />
-            <SettingItem
-              icon="🌙"
-              title="Dark Mode"
-              subtitle="Switch to dark theme"
-              type="toggle"
-              value={darkMode}
-              onToggle={setDarkMode}
-            />
-            <SettingItem
-              icon="📍"
-              title="Location Services"
-              subtitle="Allow access to your location"
-              type="toggle"
-              value={location}
-              onToggle={setLocation}
-            />
-            <SettingItem
-              icon="🔄"
-              title="Auto Sync"
-              subtitle="Automatically sync your data"
-              type="toggle"
-              value={autoSync}
-              onToggle={setAutoSync}
-            />
-          </View>
-
-          <SectionHeader title="SUPPORT" />
-          <View style={styles.section}>
-            <SettingItem
-              icon="❓"
+              icon="help-circle-outline"
               title="Help Center"
               subtitle="Get help and support"
               type="navigation"
-              onPress={() => navigation.navigate('HelpCenterScreen')}
+              onPress={() => navigation.navigate("HelpCenter")}
+              iconBg="rgba(102, 126, 234, 0.1)"
+              iconColor={DESIGN.COLORS.primary}
             />
             <SettingItem
-              icon="📧"
+              icon="mail-outline"
               title="Contact Us"
               subtitle="Send us your feedback"
               type="navigation"
-              onPress={() => navigation.navigate('ContactUsScreen')}
+              onPress={() => navigation.navigate("ContactUs")}
+              iconBg="rgba(59, 130, 246, 0.1)"
+              iconColor={DESIGN.COLORS.info}
             />
             <SettingItem
-              icon="⭐"
+              icon="shield-checkmark-outline"
+              title="Privacy & Security"
+              subtitle="Manage your account security"
+              type="navigation"
+              onPress={() => navigation.navigate("privacypolicy")}
+              iconBg="rgba(16, 185, 129, 0.1)"
+              iconColor={DESIGN.COLORS.success}
+            />
+          </View>
+
+          {/* About Section */}
+          <SectionHeader title="ABOUT" icon="information-circle-outline" />
+          <View style={styles.section}>
+            <SettingItem
+              icon="star-outline"
               title="Rate App"
               subtitle="Share your experience"
               type="navigation"
-              onPress={() => console.log('Navigate to Rate')}
+              onPress={async () => {
+                try {
+                  const isAvailable = await StoreReview.isAvailableAsync();
+
+                  if (isAvailable) {
+                    // ✅ Opens native in-app review dialog
+                    await StoreReview.requestReview();
+                  } else {
+                    // ✅ Fallback: open App/Play Store link
+                    const storeUrl =
+                      Platform.OS === "ios"
+                        ? "https://apps.apple.com/app/idYOUR_APPLE_APP_ID" // replace YOUR_APPLE_APP_ID
+                        : "https://play.google.com/store/apps/details?id=com.snoutiq.app";
+
+                    const supported = await Linking.canOpenURL(storeUrl);
+                    if (supported) {
+                      await Linking.openURL(storeUrl);
+                    } else {
+                      Alert.alert("Error", "Unable to open store page.");
+                    }
+                  }
+                } catch (error) {
+                  console.error("Error opening rating:", error);
+                  Alert.alert(
+                    "Error",
+                    "Something went wrong while trying to rate the app."
+                  );
+                }
+              }}
+              iconBg="rgba(245, 158, 11, 0.1)"
+              iconColor={DESIGN.COLORS.warning}
+            />
+
+            <SettingItem
+              icon="share-social-outline"
+              title="Share with Friends"
+              subtitle="Invite your friends to join"
+              type="navigation"
+              onPress={async () => {
+                const message = `🐾 Check out SnoutIQ — India's first AI-powered pet care app!  
+Download now: https://play.google.com/store/apps/details?id=com.snoutiq.app`;
+
+                try {
+                  const result = await Share.share({
+                    message,
+                    title: "Share SnoutIQ",
+                  });
+
+                  if (result.action === Share.dismissedAction) {
+                    console.log("User dismissed share dialog");
+                  }
+                } catch (error) {
+                  console.error("Error sharing app:", error);
+                }
+              }}
+              iconBg="rgba(236, 72, 153, 0.1)"
+              iconColor="#EC4899"
+            />
+            <SettingItem
+              icon="logo-instagram"
+              title="Follow Us"
+              subtitle="Connect on social media"
+              type="navigation"
+              action={() =>
+                Linking.openURL(
+                  "https://www.instagram.com/snoutiq_marketplace/"
+                )
+              }
+              iconBg="rgba(124, 58, 237, 0.1)"
+              iconColor="#7C3AED"
             />
           </View>
 
-          <SectionHeader title="ABOUT US" />
-          <View style={styles.section}>
-            <SettingItem
-              icon="ℹ️"
-              title="Terms & Conditions"
-              type="navigation"
-              onPress={() => navigation.navigate('TermsScreen')}
-            />
-            <SettingItem
-              icon="📄"
-              title="Share with your friends"
-              subtitle="Invite your friends on the app"
-              type="navigation"
-              onPress={() => console.log('Navigate to Share')}
-            />
-            <SettingItem
-              icon="📱"
-              title="Follow us"
-              subtitle="Follow us on social media"
-              type="navigation"
-            />
+          {/* App Version */}
+          <View style={styles.versionContainer}>
+            <Text style={styles.versionText}>SnoutIQ v1.0.0</Text>
+            <Text style={styles.versionSubtext}>Made with ❤️ for pets</Text>
           </View>
-
-          <TouchableOpacity
-            style={styles.logoutButton}
-            onPress={handleLogout}
-          >
-            <Ionicons name="log-out-outline" size={scale(20)} color="#EF4444" />
-            <Text style={styles.logoutText}>Logout</Text>
-          </TouchableOpacity>
         </View>
       </ScrollView>
     </SafeAreaView>
@@ -231,116 +316,156 @@ export default SettingsScreen;
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: DESIGN.COLORS.background,
   },
   header: {
-    paddingHorizontal: moderateScale(24),
-    paddingTop: verticalScale(20),
-    paddingBottom: verticalScale(15),
-    borderBottomLeftRadius: moderateScale(24),
-    borderBottomRightRadius: moderateScale(24),
+    paddingHorizontal: DESIGN.SPACING.lg,
+    paddingTop: DESIGN.SPACING.md,
+    paddingBottom: DESIGN.SPACING.xl,
+    borderBottomLeftRadius: DESIGN.RADIUS.xl,
+    borderBottomRightRadius: DESIGN.RADIUS.xl,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 12,
+    elevation: 8,
   },
   headerContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  backIcon: {
-    color: 'white',
+  backButton: {
+    padding: DESIGN.SPACING.xs,
+  },
+  headerTextContainer: {
+    flex: 1,
+    alignItems: "center",
   },
   headerTitle: {
-    fontSize: moderateScale(28),
-    fontWeight: 'bold',
-    color: '#FFFFFF',
-    textAlign: 'center',
+    fontSize: DESIGN.TYPOGRAPHY.h1,
+    fontWeight: "700",
+    color: DESIGN.COLORS.white,
+    marginBottom: DESIGN.SPACING.xs / 2,
+  },
+  headerSubtitle: {
+    fontSize: DESIGN.TYPOGRAPHY.caption,
+    color: "rgba(255, 255, 255, 0.85)",
+    fontWeight: "500",
   },
   headerPlaceholder: {
-    width: moderateScale(25),
+    width: scale(28),
   },
   scrollView: {
     flex: 1,
   },
+  scrollContent: {
+    paddingBottom: DESIGN.SPACING.xxl,
+  },
   content: {
-    paddingHorizontal: moderateScale(16),
-    paddingTop: verticalScale(24),
-    paddingBottom: verticalScale(40),
+    paddingHorizontal: DESIGN.SPACING.lg,
+    paddingTop: DESIGN.SPACING.xl,
+  },
+  sectionHeaderContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: DESIGN.SPACING.xs,
+    marginTop: DESIGN.SPACING.xl,
+    marginBottom: DESIGN.SPACING.md,
+    paddingLeft: DESIGN.SPACING.xs,
   },
   sectionHeader: {
-    fontSize: moderateScale(12),
-    fontWeight: '600',
-    color: '#6B7280',
-    marginTop: verticalScale(24),
-    marginBottom: verticalScale(8),
-    marginLeft: moderateScale(4),
-    letterSpacing: 0.5,
+    fontSize: DESIGN.TYPOGRAPHY.tiny,
+    fontWeight: "700",
+    color: DESIGN.COLORS.gray600,
+    letterSpacing: 1,
   },
   section: {
-    backgroundColor: '#FFFFFF',
-    borderRadius: moderateScale(16),
-    overflow: 'hidden',
-    shadowColor: '#000',
+    backgroundColor: DESIGN.COLORS.white,
+    borderRadius: DESIGN.RADIUS.lg,
+    overflow: "hidden",
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.05,
-    shadowRadius: moderateScale(8),
+    shadowRadius: 8,
     elevation: 2,
   },
   settingItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: verticalScale(14),
-    paddingHorizontal: moderateScale(16),
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: DESIGN.SPACING.md,
+    paddingHorizontal: DESIGN.SPACING.lg,
     borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-    minHeight: verticalScale(60),
+    borderBottomColor: DESIGN.COLORS.gray100,
+    minHeight: verticalScale(68),
   },
   settingIcon: {
-    width: moderateScale(40),
-    height: moderateScale(40),
-    borderRadius: moderateScale(12),
-    backgroundColor: '#F3F4F6',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: moderateScale(16),
-  },
-  iconText: {
-    fontSize: moderateScale(18),
+    width: scale(44),
+    height: scale(44),
+    borderRadius: DESIGN.RADIUS.md,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: DESIGN.SPACING.md,
   },
   settingContent: {
     flex: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
   },
   settingTitle: {
-    fontSize: moderateScale(15),
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: verticalScale(2),
+    fontSize: DESIGN.TYPOGRAPHY.body,
+    fontWeight: "600",
+    color: DESIGN.COLORS.gray900,
+    marginBottom: DESIGN.SPACING.xs / 2,
   },
   settingSubtitle: {
-    fontSize: moderateScale(13),
-    color: '#6B7280',
-    lineHeight: moderateScale(16),
-  },
-  switch: {
-    transform: [
-      { scaleX: moderateScale(0.8) },
-      { scaleY: moderateScale(0.8) },
-    ],
+    fontSize: DESIGN.TYPOGRAPHY.caption,
+    color: DESIGN.COLORS.gray600,
+    lineHeight: scale(16),
   },
   logoutButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#FEF2F2',
-    padding: moderateScale(16),
-    borderRadius: moderateScale(16),
-    marginBottom: verticalScale(16),
-    borderWidth: 1,
-    borderColor: '#FECACA',
+    marginTop: DESIGN.SPACING.xl,
+    borderRadius: DESIGN.RADIUS.lg,
+    overflow: "hidden",
+    shadowColor: DESIGN.COLORS.error,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  logoutGradient: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: DESIGN.SPACING.lg,
+    paddingHorizontal: DESIGN.SPACING.xl,
+    gap: DESIGN.SPACING.md,
+  },
+  logoutIconContainer: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: DESIGN.COLORS.white,
+    alignItems: "center",
+    justifyContent: "center",
   },
   logoutText: {
-    fontSize: moderateScale(16),
-    fontWeight: '600',
-    color: '#EF4444',
-    marginLeft: scale(8),
+    fontSize: DESIGN.TYPOGRAPHY.body,
+    fontWeight: "700",
+    color: DESIGN.COLORS.error,
+  },
+  versionContainer: {
+    alignItems: "center",
+    marginTop: DESIGN.SPACING.xl,
+    paddingVertical: DESIGN.SPACING.lg,
+  },
+  versionText: {
+    fontSize: DESIGN.TYPOGRAPHY.caption,
+    color: DESIGN.COLORS.gray600,
+    fontWeight: "600",
+    marginBottom: DESIGN.SPACING.xs / 2,
+  },
+  versionSubtext: {
+    fontSize: DESIGN.TYPOGRAPHY.tiny,
+    color: DESIGN.COLORS.gray400,
   },
 });

@@ -1,5 +1,7 @@
+import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
+import { LinearGradient } from "expo-linear-gradient";
 import { useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -18,8 +20,6 @@ import {
 } from "react-native";
 import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import { useAuth } from "../context/AuthContext";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 
 // Responsive constants
 const FONT_SIZES = {
@@ -628,7 +628,7 @@ export default function ProfileCompletionModalAuto({
         behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <LinearGradient
-          colors={["#7C3AED", "#EC4899"]}
+          colors={["#667eea", "#764ba2"]}
           style={styles.headerContainer}
           start={{ x: 0, y: 0 }}
           end={{ x: 1, y: 1 }}

@@ -1,4 +1,5 @@
 import { Ionicons } from "@expo/vector-icons";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import axios from "axios";
 import { BlurView } from "expo-blur";
 import { LinearGradient } from "expo-linear-gradient";
@@ -16,11 +17,17 @@ import {
   TouchableOpacity,
   View,
 } from "react-native";
-import { moderateScale, verticalScale, scale } from "react-native-size-matters";
+import { moderateScale, scale, verticalScale } from "react-native-size-matters";
 import { AuthContext } from "../context/AuthContext";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { width, height } = Dimensions.get("window");
+
+// Cache keys
+const CACHE_KEYS = {
+  CHAT_HISTORY: 'chat_history_cache',
+  LAST_FETCH_TIME: 'chat_history_last_fetch',
+  CACHE_DURATION: 5 * 60 * 1000, // 5 minutes cache
+};
 
 // Responsive constants
 const FONT_SIZES = {
@@ -52,49 +59,220 @@ const ChatHistorySidebar = ({
   const [loading, setLoading] = useState(false);
   const [deletingId, setDeletingId] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [showSkeleton, setShowSkeleton] = useState(false);
 
-  const { user, updateChatRoomToken } = useContext(AuthContext);
+  const { user, updateChatRoomToken, token } = useContext(AuthContext);
   const slideAnim = useRef(new Animated.Value(-width)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
-  // Fetch chat history
-  const fetchHistory = async (isRefresh = false) => {
-    if (!user) return;
+  // Skeleton loader data
+  const skeletonData = Array(6).fill({ id: Math.random(), isSkeleton: true });
 
-    if (isRefresh) {
-      setRefreshing(true);
-    } else {
-      setLoading(true);
-    }
-
+  // Cache management functions
+  const getCachedHistory = async () => {
     try {
-      const token = await AsyncStorage.getItem("token");
-
-      const response = await axios.get(
-        `https://snoutiq.com/backend/api/chat/listRooms?user_id=${user.id}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      const sorted = response.data.rooms.sort(
-        (a, b) =>
-          new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
-      );
-
-      setHistory(sorted);
+      const cachedData = await AsyncStorage.getItem(CACHE_KEYS.CHAT_HISTORY);
+      const lastFetchTime = await AsyncStorage.getItem(CACHE_KEYS.LAST_FETCH_TIME);
+      
+      if (cachedData && lastFetchTime) {
+        const timeDiff = Date.now() - parseInt(lastFetchTime);
+        if (timeDiff < CACHE_KEYS.CACHE_DURATION) {
+          console.log("Loading from cache");
+          return JSON.parse(cachedData);
+        } else {
+          console.log("Cache expired, clearing...");
+          await clearCache();
+        }
+      }
+      return null;
     } catch (error) {
-      Alert.alert("Error", "Failed to load chat history");
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
+      console.error("Error reading cache:", error);
+      return null;
     }
   };
 
+  const setCachedHistory = async (data) => {
+    try {
+      await AsyncStorage.setItem(CACHE_KEYS.CHAT_HISTORY, JSON.stringify(data));
+      await AsyncStorage.setItem(CACHE_KEYS.LAST_FETCH_TIME, Date.now().toString());
+      console.log("Data cached successfully");
+    } catch (error) {
+      console.error("Error caching data:", error);
+    }
+  };
+
+  const clearCache = async () => {
+    try {
+      await AsyncStorage.removeItem(CACHE_KEYS.CHAT_HISTORY);
+      await AsyncStorage.removeItem(CACHE_KEYS.LAST_FETCH_TIME);
+      console.log("Cache cleared");
+    } catch (error) {
+      console.error("Error clearing cache:", error);
+    }
+  };
+
+  const updateCacheAfterDelete = async (deletedId) => {
+    try {
+      const cachedData = await getCachedHistory();
+      if (cachedData) {
+        const updatedData = cachedData.filter((c) => c.id !== deletedId);
+        await setCachedHistory(updatedData);
+      }
+    } catch (error) {
+      console.error("Error updating cache after delete:", error);
+    }
+  };
+
+  const updateCacheAfterNewChat = async (newChat) => {
+    try {
+      const cachedData = await getCachedHistory();
+      if (cachedData) {
+        const updatedData = [newChat, ...cachedData];
+        await setCachedHistory(updatedData);
+      }
+    } catch (error) {
+      console.error("Error updating cache after new chat:", error);
+    }
+  };
+
+  // Fetch chat history with cache
+  // const fetchHistory = async (isRefresh = false, forceRefresh = false) => {
+  //   if (!user || !token) return;
+
+  //   // Don't show skeleton on refresh
+  //   if (isRefresh) {
+  //     setRefreshing(true);
+  //   } else {
+  //     setLoading(true);
+  //     if (!forceRefresh) {
+  //       setShowSkeleton(true);
+  //     }
+  //   }
+
+  //   try {
+  //     // Try to get from cache first (unless force refresh)
+  //     if (!forceRefresh && !isRefresh) {
+  //       const cachedData = await getCachedHistory();
+  //       if (cachedData) {
+  //         console.log("Using cached data");
+  //         setHistory(cachedData);
+  //         setShowSkeleton(false);
+  //         setLoading(false);
+  //         return;
+  //       }
+  //     }
+
+  //     // Fetch from API
+  //     console.log("Fetching fresh data from API");
+  //     const response = await axios.get(
+  //       `https://snoutiq.com/backend/api/chat/listRooms?user_id=${user.id}`,
+  //       { 
+  //         headers: { Authorization: `Bearer ${token}` },
+  //         timeout: 10000
+  //       }
+  //     );
+      
+  //     console.log("Chat history API response:", response.data);
+
+  //     if (response.data && response.data.rooms) {
+  //       const sorted = response.data.rooms.sort(
+  //         (a, b) =>
+  //           new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+  //       );
+  //       setHistory(sorted);
+        
+  //       // Cache the fresh data
+  //       await setCachedHistory(sorted);
+  //     } else {
+  //       setHistory([]);
+  //       await setCachedHistory([]);
+  //     }
+  //   } catch (error) {
+  //     console.error("Failed to load chat history:", error);
+      
+  //     // If API fails, try to show cached data as fallback
+  //     if (!isRefresh) {
+  //       const cachedData = await getCachedHistory();
+  //       if (cachedData) {
+  //         console.log("API failed, using cached data as fallback");
+  //         setHistory(cachedData);
+  //       } else {
+  //         Alert.alert("Error", "Failed to load chat history");
+  //         setHistory([]);
+  //       }
+  //     } else {
+  //       Alert.alert("Error", "Failed to refresh chat history");
+  //     }
+  //   } finally {
+  //     setLoading(false);
+  //     setRefreshing(false);
+  //     setShowSkeleton(false);
+  //   }
+  // };
+
+  
+  const fetchHistory = async (isRefresh = false, forceRefresh = false) => {
+  if (!user || !token) return;
+
+  if (isRefresh) {
+    setRefreshing(true);
+  } else {
+    setLoading(true);
+    if (!forceRefresh) setShowSkeleton(true);
+  }
+
+  try {
+    // Start fetching cache and API in parallel
+    const cachedPromise = !forceRefresh && !isRefresh ? getCachedHistory() : null;
+    const apiPromise = axios.get(
+      `https://snoutiq.com/backend/api/chat/listRooms?user_id=${user.id}`,
+      { headers: { Authorization: `Bearer ${token}` }, timeout: 8000 }
+    );
+
+    // Show cache immediately if available (non-blocking)
+    if (cachedPromise) {
+      cachedPromise.then((cachedData) => {
+        if (cachedData) {
+          console.log("⚡ Showing cached data instantly");
+          setHistory(cachedData);
+          setShowSkeleton(false);
+        }
+      });
+    }
+
+    // Wait for fresh API data
+    const response = await apiPromise;
+    const rooms = response?.data?.rooms || [];
+
+    const sorted = rooms.sort(
+      (a, b) =>
+        new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+    );
+    setHistory(sorted);
+    await setCachedHistory(sorted);
+  } catch (error) {
+    console.error("Failed to load chat history:", error);
+    const cachedData = await getCachedHistory();
+    if (cachedData) {
+      console.log("⚠️ API failed, using cached data fallback");
+      setHistory(cachedData);
+    } else {
+      Alert.alert("Error", "Failed to load chat history");
+      setHistory([]);
+    }
+  } finally {
+    setLoading(false);
+    setRefreshing(false);
+    setShowSkeleton(false);
+  }
+};
+
+
   // Start new chat
   const handleNewChat = async () => {
-    if (!user) return;
+    if (!user || !token) return;
 
     try {
-      const token = await AsyncStorage.getItem("token");
       const response = await axios.get(
         `https://snoutiq.com/backend/api/chat-rooms/new?user_id=${user.id}`,
         { headers: { Authorization: `Bearer ${token}` } }
@@ -109,22 +287,38 @@ const ChatHistorySidebar = ({
       handleClose();
 
       setTimeout(() => {
-        navigation.navigate("Chat", { 
+        navigation.navigate("Chat", {
           chat_room_token,
           isNewChat: true,
           loadHistory: false,
-          timestamp: Date.now()
+          timestamp: Date.now(),
         });
       }, 350);
 
-      await fetchHistory();
+      // Update cache with new chat
+      const newChat = {
+        id: Date.now(), // Temporary ID
+        chat_room_token,
+        name: "New Chat",
+        created_at: new Date().toISOString(),
+        updated_at: new Date().toISOString()
+      };
+      
+      await updateCacheAfterNewChat(newChat);
+      
+      // Refresh history (will use cache first)
+      await fetchHistory(false, true); // Force refresh to get actual data
+
     } catch (error) {
+      console.error("Failed to start new chat:", error);
       Alert.alert("Error", "Failed to start new chat");
     }
   };
 
   // Delete chat
   const handleDeleteChat = async (chatId, chatRoomToken) => {
+    if (!user || !token) return;
+    
     Alert.alert("Delete Chat", "Are you sure you want to delete this chat?", [
       { text: "Cancel", style: "cancel" },
       {
@@ -133,20 +327,23 @@ const ChatHistorySidebar = ({
         onPress: async () => {
           setDeletingId(chatId);
           try {
-            const token = await AsyncStorage.getItem("token");
             await axios.delete(
               `https://snoutiq.com/backend/api/chat-rooms/${chatRoomToken}?user_id=${user.id}`,
               { headers: { Authorization: `Bearer ${token}` } }
             );
-            
+
             // Remove from state
             setHistory((prev) => prev.filter((c) => c.id !== chatId));
+
+            // Update cache
+            await updateCacheAfterDelete(chatId);
 
             // If deleted chat is current, create new one
             if (chatRoomToken === currentChatRoomToken) {
               await handleNewChat();
             }
           } catch (error) {
+            console.error("Failed to delete chat:", error);
             Alert.alert("Error", "Failed to delete chat");
           } finally {
             setDeletingId(null);
@@ -158,22 +355,20 @@ const ChatHistorySidebar = ({
 
   // Select chat from history
   const handleSelectChat = (chatRoomToken) => {
-    
     if (updateChatRoomToken) {
       updateChatRoomToken(chatRoomToken);
     }
 
     handleClose();
-    
-    // Use setTimeout to ensure navigation happens after modal closes
+
     setTimeout(() => {
-      navigation.navigate("Chat", { 
+      navigation.navigate("Chat", {
         chat_room_token: chatRoomToken,
-        loadHistory: true, 
+        loadHistory: true,
         isNewChat: false,
-        timestamp: Date.now() // Force update
+        timestamp: Date.now(),
       });
-    }, 350); // Increased delay slightly
+    }, 350);
   };
 
   // Format date
@@ -181,10 +376,9 @@ const ChatHistorySidebar = ({
     const d = new Date(dateStr);
     const now = new Date();
     const diff = Math.floor((now - d) / (1000 * 60 * 60 * 24));
-    
+
     if (diff === 0) {
-      // Today - show time
-      return d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+      return d.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
     } else if (diff === 1) {
       return "Yesterday";
     } else if (diff < 7) {
@@ -194,56 +388,69 @@ const ChatHistorySidebar = ({
     }
   };
 
-  // Open animation
-  useEffect(() => {
-    if (visible) {
-      fetchHistory();
+  // Skeleton loader component
+  const SkeletonLoader = () => {
+    const pulseAnim = useRef(new Animated.Value(0.3)).current;
 
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
+    useEffect(() => {
+      const pulse = Animated.sequence([
+        Animated.timing(pulseAnim, {
           toValue: 1,
-          duration: 300,
+          duration: 1000,
           useNativeDriver: true,
         }),
-      ]).start();
-    }
-  }, [visible]);
+        Animated.timing(pulseAnim, {
+          toValue: 0.3,
+          duration: 1000,
+          useNativeDriver: true,
+        }),
+      ]);
 
-  // Close animation
-  const handleClose = () => {
-    Animated.parallel([
-      Animated.timing(slideAnim, {
-        toValue: -width,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-      Animated.timing(fadeAnim, {
-        toValue: 0,
-        duration: 250,
-        useNativeDriver: true,
-      }),
-    ]).start(() => {
-      onClose();
-    });
+      Animated.loop(pulse).start();
+    }, []);
+
+    return (
+      <View style={styles.skeletonItem}>
+        <Animated.View style={[styles.skeletonIcon, { opacity: pulseAnim }]} />
+        <View style={styles.skeletonContent}>
+          <Animated.View
+            style={[
+              styles.skeletonLine,
+              styles.skeletonTitle,
+              { opacity: pulseAnim },
+            ]}
+          />
+          <Animated.View
+            style={[
+              styles.skeletonLine,
+              styles.skeletonSubtitle,
+              { opacity: pulseAnim },
+            ]}
+          />
+        </View>
+        <Animated.View
+          style={[styles.skeletonButton, { opacity: pulseAnim }]}
+        />
+      </View>
+    );
   };
 
-  // Render chat item
+  // Render chat item or skeleton
   const renderChatItem = ({ item }) => {
+    if (item.isSkeleton) {
+      return <SkeletonLoader />;
+    }
+
     const isActive = item.chat_room_token === currentChatRoomToken;
     const isDeleting = deletingId === item.id;
 
-    // Get the last message preview if available
     const lastMessage = item.last_message || item.name || "New Chat";
-    const displayName = item.name && !item.name.startsWith("New chat -")
-      ? item.name
-      : lastMessage.length > 50
-      ? lastMessage.substring(0, 50) + "..."
-      : lastMessage;
+    const displayName =
+      item.name && !item.name.startsWith("New chat -")
+        ? item.name
+        : lastMessage.length > 50
+        ? lastMessage.substring(0, 50) + "..."
+        : lastMessage;
 
     return (
       <TouchableOpacity
@@ -288,16 +495,55 @@ const ChatHistorySidebar = ({
     );
   };
 
+  // Open animation
+  useEffect(() => {
+    if (visible) {
+      fetchHistory();
+
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    } else {
+      setShowSkeleton(false);
+    }
+  }, [visible]);
+
+  // Close animation
+  const handleClose = () => {
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: -width,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+      Animated.timing(fadeAnim, {
+        toValue: 0,
+        duration: 250,
+        useNativeDriver: true,
+      }),
+    ]).start(() => {
+      onClose();
+    });
+  };
+
   return (
     <Modal
       visible={visible}
       transparent
       animationType="none"
       onRequestClose={handleClose}
-      statusBarTranslucent={false} 
+      statusBarTranslucent={false}
     >
       <View style={styles.modalContainer}>
-        {/* Backdrop */}
         <Animated.View style={[styles.backdrop, { opacity: fadeAnim }]}>
           <TouchableOpacity
             style={StyleSheet.absoluteFill}
@@ -306,14 +552,12 @@ const ChatHistorySidebar = ({
           />
         </Animated.View>
 
-        {/* Sidebar Panel */}
         <Animated.View
           style={[styles.sidebar, { transform: [{ translateX: slideAnim }] }]}
         >
           <BlurView intensity={100} tint="light" style={styles.sidebarContent}>
-            {/* Header */}
             <LinearGradient
-              colors={["#7C3AED", "#EC4899"]}
+              colors={["#667eea", "#764ba2"]}
               style={styles.header}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
@@ -322,8 +566,11 @@ const ChatHistorySidebar = ({
                 <View style={styles.headerTextContainer}>
                   <Text style={styles.headerTitle}>Chat History</Text>
                   <Text style={styles.headerSubtitle}>
-                    {history.length} conversation
-                    {history.length !== 1 ? "s" : ""}
+                    {showSkeleton || loading
+                      ? "Loading..."
+                      : `${history.length} conversation${
+                          history.length !== 1 ? "s" : ""
+                        }`}
                   </Text>
                 </View>
 
@@ -336,31 +583,39 @@ const ChatHistorySidebar = ({
                 </TouchableOpacity>
               </View>
 
-              {/* New Chat Button */}
               <TouchableOpacity
                 style={styles.newChatButton}
                 onPress={handleNewChat}
                 activeOpacity={0.8}
+                disabled={loading}
               >
                 <LinearGradient
                   colors={["#FFFFFF", "#F3F4F6"]}
                   style={styles.newChatGradient}
                 >
-                  <Ionicons name="add-circle" size={scale(20)} color="#EC4899" />
+                  <Ionicons
+                    name="add-circle"
+                    size={scale(20)}
+                    color="#EC4899"
+                  />
                   <Text style={styles.newChatText}>Start New Chat</Text>
-                  <Ionicons name="arrow-forward" size={scale(16)} color="#EC4899" />
+                  <Ionicons
+                    name="arrow-forward"
+                    size={scale(16)}
+                    color="#EC4899"
+                  />
                 </LinearGradient>
               </TouchableOpacity>
             </LinearGradient>
 
-            {/* Chat List */}
             <View style={styles.listContainer}>
-              {loading && !refreshing ? (
-                <View style={styles.loadingContainer}>
-                  <ActivityIndicator size="large" color="#7C3AED" />
-                  <Text style={styles.loadingText}>Loading history...</Text>
+              {showSkeleton ? (
+                <View style={styles.listContent}>
+                  {skeletonData.map((item, index) => (
+                    <SkeletonLoader key={index} />
+                  ))}
                 </View>
-              ) : history.length === 0 ? (
+              ) : history.length === 0 && !loading ? (
                 <View style={styles.emptyContainer}>
                   <View style={styles.emptyIcon}>
                     <Ionicons
@@ -378,7 +633,7 @@ const ChatHistorySidebar = ({
                     onPress={handleNewChat}
                   >
                     <LinearGradient
-                      colors={["#7C3AED", "#EC4899"]}
+                      colors={["#667eea", "#764ba2"]}
                       style={styles.emptyButtonGradient}
                     >
                       <Text style={styles.emptyButtonText}>
@@ -395,15 +650,18 @@ const ChatHistorySidebar = ({
                   contentContainerStyle={styles.listContent}
                   showsVerticalScrollIndicator={false}
                   refreshing={refreshing}
-                  onRefresh={() => fetchHistory(true)}
+                  onRefresh={() => fetchHistory(true, true)} // Force refresh on pull
                 />
               )}
             </View>
 
-            {/* Footer Info */}
             <View style={styles.footer}>
               <View style={styles.footerIcon}>
-                <Ionicons name="shield-checkmark" size={scale(16)} color="#10B981" />
+                <Ionicons
+                  name="shield-checkmark"
+                  size={scale(16)}
+                  color="#10B981"
+                />
               </View>
               <Text style={styles.footerText}>
                 All chats are encrypted and secure
@@ -416,6 +674,7 @@ const ChatHistorySidebar = ({
   );
 };
 
+// Styles remain the same as your previous code...
 const styles = StyleSheet.create({
   modalContainer: {
     flex: 1,
@@ -435,7 +694,7 @@ const styles = StyleSheet.create({
   },
   sidebarContent: {
     flex: 1,
-    backgroundColor: "#FFFFFF",
+    backgroundColor: "#F0F4FF",
   },
   header: {
     paddingTop: Platform.OS === "ios" ? verticalScale(50) : verticalScale(30),
@@ -502,6 +761,46 @@ const styles = StyleSheet.create({
     gap: verticalScale(8),
     paddingBottom: verticalScale(20),
   },
+  skeletonItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    backgroundColor: "#FFFFFF",
+    padding: SPACING.md,
+    borderRadius: moderateScale(12),
+    borderWidth: 1.5,
+    borderColor: "#E5E7EB",
+    minHeight: verticalScale(70),
+  },
+  skeletonIcon: {
+    width: scale(40),
+    height: scale(40),
+    borderRadius: scale(20),
+    backgroundColor: "#E5E7EB",
+  },
+  skeletonContent: {
+    flex: 1,
+    marginLeft: SPACING.md,
+    gap: SPACING.xs,
+  },
+  skeletonLine: {
+    backgroundColor: "#E5E7EB",
+    borderRadius: moderateScale(4),
+  },
+  skeletonTitle: {
+    height: verticalScale(16),
+    width: "70%",
+  },
+  skeletonSubtitle: {
+    height: verticalScale(12),
+    width: "40%",
+  },
+  skeletonButton: {
+    width: scale(24),
+    height: scale(24),
+    borderRadius: scale(12),
+    backgroundColor: "#E5E7EB",
+  },
   chatItem: {
     flexDirection: "row",
     alignItems: "center",
@@ -542,7 +841,7 @@ const styles = StyleSheet.create({
   },
   chatInfo: {
     flex: 1,
-    minWidth: 0, // Important for text truncation
+    minWidth: 0,
   },
   chatName: {
     fontSize: FONT_SIZES.medium,
@@ -561,18 +860,6 @@ const styles = StyleSheet.create({
   deleteButton: {
     padding: SPACING.sm,
     marginLeft: SPACING.xs,
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: verticalScale(60),
-  },
-  loadingText: {
-    marginTop: SPACING.lg,
-    fontSize: FONT_SIZES.medium,
-    color: "#6B7280",
-    fontWeight: "500",
   },
   emptyContainer: {
     flex: 1,
